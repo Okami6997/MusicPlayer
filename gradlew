@@ -188,7 +188,11 @@ fi
 
 # Add default JVM options here. You can also use JAVA_OPTS and GRADLE_OPTS to pass JVM options to this script.
 # shellcheck disable=SC2086
-exec "$JAVACMD" "$@" \
+exec "$JAVACMD" \
+  $DEFAULT_JVM_OPTS \
+  $JAVA_OPTS \
+  $GRADLE_OPTS \
+  "-Dorg.gradle.appname=$APP_BASE_NAME" \
   -classpath "$CLASSPATH" \
   org.gradle.wrapper.GradleWrapperMain \
   "$@"
