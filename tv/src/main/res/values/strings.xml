@@ -1,0 +1,4 @@
+<resources>
+    <string name="app_name">Music Player TV</string>
+    <style name="Theme.Leanback" parent="@style/Theme.Leanback"/>
+</resources>

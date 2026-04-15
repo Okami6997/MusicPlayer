@@ -1,0 +1,250 @@
+name: Build APK / AAB
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+# Default to minimal permissions; each job may narrow further but cannot expand.
+permissions:
+  contents: read
+
+jobs:
+  # ──────────────────────────────────────────────────────────────────────────
+  # Phone / tablet APK (debug + release)
+  # ──────────────────────────────────────────────────────────────────────────
+  build-phone:
+    name: Build Phone APK
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v3
+        with:
+          cache-encryption-key: ${{ secrets.GRADLE_ENCRYPTION_KEY }}
+
+      - name: Make gradlew executable
+        run: chmod +x ./gradlew
+
+      - name: Build debug APK (phone)
+        run: ./gradlew :app:assembleDebug --stacktrace
+
+      - name: Build release APK (phone)
+        run: ./gradlew :app:assembleRelease --stacktrace
+
+      - name: Upload debug APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: MusicPlayer-phone-debug
+          path: app/build/outputs/apk/phone/debug/*.apk
+          if-no-files-found: warn
+
+      - name: Upload release APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: MusicPlayer-phone-release
+          path: app/build/outputs/apk/phone/release/*.apk
+          if-no-files-found: warn
+
+  # ──────────────────────────────────────────────────────────────────────────
+  # Wear OS APK
+  # ──────────────────────────────────────────────────────────────────────────
+  build-wear:
+    name: Build Wear OS APK
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v3
+        with:
+          cache-encryption-key: ${{ secrets.GRADLE_ENCRYPTION_KEY }}
+
+      - name: Make gradlew executable
+        run: chmod +x ./gradlew
+
+      - name: Build Wear OS debug APK
+        run: ./gradlew :wear:assembleDebug --stacktrace
+
+      - name: Upload Wear OS APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: MusicPlayer-wear-debug
+          path: wear/build/outputs/apk/debug/*.apk
+          if-no-files-found: warn
+
+  # ──────────────────────────────────────────────────────────────────────────
+  # Android TV APK
+  # ──────────────────────────────────────────────────────────────────────────
+  build-tv:
+    name: Build Android TV APK
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v3
+        with:
+          cache-encryption-key: ${{ secrets.GRADLE_ENCRYPTION_KEY }}
+
+      - name: Make gradlew executable
+        run: chmod +x ./gradlew
+
+      - name: Build TV debug APK
+        run: ./gradlew :tv:assembleDebug --stacktrace
+
+      - name: Upload TV APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: MusicPlayer-tv-debug
+          path: tv/build/outputs/apk/debug/*.apk
+          if-no-files-found: warn
+
+  # ──────────────────────────────────────────────────────────────────────────
+  # Android Auto APK
+  # ──────────────────────────────────────────────────────────────────────────
+  build-auto:
+    name: Build Android Auto APK
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v3
+        with:
+          cache-encryption-key: ${{ secrets.GRADLE_ENCRYPTION_KEY }}
+
+      - name: Make gradlew executable
+        run: chmod +x ./gradlew
+
+      - name: Build Auto debug APK
+        run: ./gradlew :auto:assembleDebug --stacktrace
+
+      - name: Upload Auto APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: MusicPlayer-auto-debug
+          path: auto/build/outputs/apk/debug/*.apk
+          if-no-files-found: warn
+
+  # ──────────────────────────────────────────────────────────────────────────
+  # Unit tests (all modules)
+  # ──────────────────────────────────────────────────────────────────────────
+  test:
+    name: Run Unit Tests
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v3
+        with:
+          cache-encryption-key: ${{ secrets.GRADLE_ENCRYPTION_KEY }}
+
+      - name: Make gradlew executable
+        run: chmod +x ./gradlew
+
+      - name: Run tests
+        run: ./gradlew testDebugUnitTest --stacktrace
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: '**/build/reports/tests/**'
+
+  # ──────────────────────────────────────────────────────────────────────────
+  # Release Bundle (AAB) — only on push to main
+  # ──────────────────────────────────────────────────────────────────────────
+  build-release-bundle:
+    name: Build Release AAB
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v3
+        with:
+          cache-encryption-key: ${{ secrets.GRADLE_ENCRYPTION_KEY }}
+
+      - name: Make gradlew executable
+        run: chmod +x ./gradlew
+
+      - name: Build release AAB
+        run: ./gradlew :app:bundlePhoneRelease --stacktrace
+
+      - name: Upload release AAB
+        uses: actions/upload-artifact@v4
+        with:
+          name: MusicPlayer-release-bundle
+          path: app/build/outputs/bundle/phoneRelease/*.aab
+          if-no-files-found: warn
