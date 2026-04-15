@@ -1,0 +1,17 @@
+<resources>
+    <string name="app_name">Music Player</string>
+    <string name="now_playing">Now Playing</string>
+    <string name="library">Library</string>
+    <string name="search">Search</string>
+    <string name="settings">Settings</string>
+    <string name="sources">Music Sources</string>
+    <string name="add_source">Add Source</string>
+    <string name="local_library">Local Library</string>
+    <string name="scan_local">Scan Local Library</string>
+    <string name="no_music_found">No music found</string>
+    <string name="recently_added">Recently Added</string>
+    <string name="tracks">Tracks</string>
+    <string name="albums">Albums</string>
+    <string name="artists">Artists</string>
+    <string name="playlists">Playlists</string>
+</resources>
