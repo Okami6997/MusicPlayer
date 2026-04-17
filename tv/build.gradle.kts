@@ -39,7 +39,6 @@ dependencies {
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.ui)
     implementation(libs.androidx.ui.tooling.preview)
-    implementation(libs.tv.compose.foundation)
     implementation(libs.tv.compose.material)
     implementation(libs.hilt.android)
     ksp(libs.hilt.android.compiler)

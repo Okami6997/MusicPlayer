@@ -248,6 +248,42 @@ jobs:
         with:
           name: MusicPlayer-release-bundle
           path: app/build/outputs/bundle/phoneRelease/*.aab
+
+  # ──────────────────────────────────────────────────────────────────────────
+  # Create GitHub Release with all APKs
+  # ──────────────────────────────────────────────────────────────────────────
+  create-release:
+    name: Create GitHub Release
+    needs: [build-phone, build-wear, build-tv, build-auto, build-release-bundle]
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    permissions:
+      contents: write
+
+    steps:
+      - name: Download all APKs
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Display structure of downloaded files
+        run: ls -R artifacts/
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          draft: false
+          prerelease: false
+          generate_release_notes: true
+          files: |
+            artifacts/MusicPlayer-phone-debug/*.apk
+            artifacts/MusicPlayer-phone-release/*.apk
+            artifacts/MusicPlayer-wear-debug/*.apk
+            artifacts/MusicPlayer-tv-debug/*.apk
+            artifacts/MusicPlayer-auto-debug/*.apk
+            artifacts/MusicPlayer-release-bundle/*.aab
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           if-no-files-found: warn
 
   # ──────────────────────────────────────────────────────────────────────────
