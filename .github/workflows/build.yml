@@ -15,6 +15,10 @@ concurrency:
 permissions:
   contents: read
 
+# Version tag derived from gradle.properties versionName (set at release time)
+env:
+  VERSION_NAME: ${{ github.run_number }}
+
 jobs:
   # ──────────────────────────────────────────────────────────────────────────
   # Phone / tablet APK (debug + release)
@@ -24,6 +28,8 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+    outputs:
+      built: ${{ steps.build.outcome == 'success' }}
 
     steps:
       - name: Checkout
@@ -37,17 +43,13 @@ jobs:
 
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v3
-        with:
-          cache-encryption-key: ${{ secrets.GRADLE_ENCRYPTION_KEY }}
 
       - name: Make gradlew executable
         run: chmod +x ./gradlew
 
       - name: Build debug APK (phone)
-        run: ./gradlew :app:assembleDebug --stacktrace
-
-      - name: Build release APK (phone)
-        run: ./gradlew :app:assembleRelease --stacktrace
+        id: build
+        run: ./gradlew :app:assembleDebug :app:assembleRelease --stacktrace
 
       - name: Upload debug APK
         uses: actions/upload-artifact@v4
@@ -71,6 +73,8 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+    outputs:
+      built: ${{ steps.build.outcome == 'success' }}
 
     steps:
       - name: Checkout
@@ -84,13 +88,12 @@ jobs:
 
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v3
-        with:
-          cache-encryption-key: ${{ secrets.GRADLE_ENCRYPTION_KEY }}
 
       - name: Make gradlew executable
         run: chmod +x ./gradlew
 
       - name: Build Wear OS debug APK
+        id: build
         run: ./gradlew :wear:assembleDebug --stacktrace
 
       - name: Upload Wear OS APK
@@ -108,6 +111,8 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+    outputs:
+      built: ${{ steps.build.outcome == 'success' }}
 
     steps:
       - name: Checkout
@@ -121,13 +126,12 @@ jobs:
 
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v3
-        with:
-          cache-encryption-key: ${{ secrets.GRADLE_ENCRYPTION_KEY }}
 
       - name: Make gradlew executable
         run: chmod +x ./gradlew
 
       - name: Build TV debug APK
+        id: build
         run: ./gradlew :tv:assembleDebug --stacktrace
 
       - name: Upload TV APK
@@ -145,6 +149,8 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+    outputs:
+      built: ${{ steps.build.outcome == 'success' }}
 
     steps:
       - name: Checkout
@@ -158,13 +164,12 @@ jobs:
 
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v3
-        with:
-          cache-encryption-key: ${{ secrets.GRADLE_ENCRYPTION_KEY }}
 
       - name: Make gradlew executable
         run: chmod +x ./gradlew
 
       - name: Build Auto debug APK
+        id: build
         run: ./gradlew :auto:assembleDebug --stacktrace
 
       - name: Upload Auto APK
@@ -195,8 +200,6 @@ jobs:
 
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v3
-        with:
-          cache-encryption-key: ${{ secrets.GRADLE_ENCRYPTION_KEY }}
 
       - name: Make gradlew executable
         run: chmod +x ./gradlew
@@ -233,8 +236,6 @@ jobs:
 
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v3
-        with:
-          cache-encryption-key: ${{ secrets.GRADLE_ENCRYPTION_KEY }}
 
       - name: Make gradlew executable
         run: chmod +x ./gradlew
@@ -248,3 +249,54 @@ jobs:
           name: MusicPlayer-release-bundle
           path: app/build/outputs/bundle/phoneRelease/*.aab
           if-no-files-found: warn
+
+  # ──────────────────────────────────────────────────────────────────────────
+  # Publish GitHub Release — only on push to main after all builds succeed
+  # ──────────────────────────────────────────────────────────────────────────
+  publish:
+    name: Publish GitHub Release
+    runs-on: ubuntu-latest
+    needs: [ build-phone, build-wear, build-tv, build-auto, build-release-bundle, test ]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download all build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: release-artifacts
+
+      - name: Display downloaded files
+        run: find release-artifacts -type f | sort
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: build-${{ github.run_number }}
+          name: "Build #${{ github.run_number }} (${{ github.sha != '' && github.sha || '' }})"
+          body: |
+            ## MusicPlayer Build #${{ github.run_number }}
+
+            **Commit:** `${{ github.sha }}`
+            **Branch:** `${{ github.ref_name }}`
+            **Triggered by:** ${{ github.actor }}
+
+            ### Artifacts
+            | Module | Artifact |
+            |--------|----------|
+            | Phone (debug) | `MusicPlayer-phone-debug.apk` |
+            | Phone (release) | `MusicPlayer-phone-release.apk` |
+            | Wear OS | `MusicPlayer-wear-debug.apk` |
+            | Android TV | `MusicPlayer-tv-debug.apk` |
+            | Android Auto | `MusicPlayer-auto-debug.apk` |
+            | Release Bundle | `MusicPlayer-release.aab` |
+          draft: false
+          prerelease: false
+          files: |
+            release-artifacts/**/*.apk
+            release-artifacts/**/*.aab
+          generate_release_notes: true
