@@ -113,6 +113,7 @@ dependencies {
 
     // Image loading
     implementation(libs.coil.compose)
+    implementation(libs.androidx.palette)
 
     // Coroutines
     implementation(libs.kotlinx.coroutines.android)

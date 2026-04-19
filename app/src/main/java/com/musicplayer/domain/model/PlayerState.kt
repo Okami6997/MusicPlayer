@@ -35,5 +35,8 @@ data class PlayerUiState(
     val queue: List<Track> = emptyList(),
     val currentQueueIndex: Int = 0,
     val volume: Float = 1f,
-    val castDevice: String? = null     // non-null means cast is active
+    val castDevice: String? = null,    // non-null means cast is active
+    val lyrics: Lyrics? = null,
+    val currentLyricsLineIndex: Int = -1,
+    val showLyrics: Boolean = false
 )

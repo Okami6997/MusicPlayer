@@ -233,6 +233,60 @@ class SubsonicClient @Inject constructor() {
         return token to salt
     }
 
+    /**
+     * Fetches lyrics for a song. Tries OpenSubsonic getLyricsBySongId first,
+     * then falls back to classic Subsonic getLyrics by artist/title.
+     */
+    suspend fun fetchLyrics(api: SubsonicApi, source: MediaSource, songId: String, artist: String, title: String): String? {
+        val (token, salt) = generateToken(source.password)
+
+        // 1. OpenSubsonic / Navidrome: getLyricsBySongId (returns structured/synced lyrics)
+        try {
+            val resp = api.getLyricsBySongId(songId, source.username, token, salt)
+            val lyricsList = resp.response.lyricsList?.structuredLyrics
+            if (!lyricsList.isNullOrEmpty()) {
+                // Prefer synced lyrics, otherwise take the first available
+                val best = lyricsList.firstOrNull { it.synced } ?: lyricsList.first()
+                val lines = best.line ?: emptyList()
+                if (lines.isNotEmpty()) {
+                    return if (best.synced) {
+                        // Convert to LRC format
+                        lines.joinToString("\n") { line ->
+                            val ms = line.start ?: 0L
+                            val min = ms / 60_000
+                            val sec = (ms % 60_000) / 1_000
+                            val cs = (ms % 1_000) / 10
+                            "[%02d:%02d.%02d]%s".format(min, sec, cs, line.value ?: "")
+                        }
+                    } else {
+                        lines.joinToString("\n") { it.value ?: "" }
+                    }
+                }
+            }
+        } catch (_: Exception) {
+            // Not supported by this server — try classic endpoint
+        }
+
+        // 2. Classic Subsonic: getLyrics by artist + title
+        try {
+            val resp = api.getLyrics(artist, title, source.username, token, salt)
+            val text = resp.response.lyrics?.value
+            if (!text.isNullOrBlank()) return text
+        } catch (_: Exception) {
+            // Not supported
+        }
+
+        return null
+    }
+
+    /**
+     * Extracts the bare song ID from a composite track ID (e.g. "source1_42" → "42").
+     */
+    fun extractSongId(track: Track): String {
+        val prefix = "${track.sourceId}_"
+        return if (track.id.startsWith(prefix)) track.id.removePrefix(prefix) else track.id
+    }
+
     private fun SubsonicSong.toTrack(source: MediaSource): Track {
         return Track(
             id = "${source.id}_$id",

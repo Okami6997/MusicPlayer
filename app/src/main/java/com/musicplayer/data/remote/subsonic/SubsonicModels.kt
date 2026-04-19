@@ -24,7 +24,30 @@ data class SubsonicResponseBody<T>(
     val songsByGenre: SongsByGenreResult? = null,
     val randomSongs: RandomSongsResult? = null,
     val indexes: IndexesResult? = null,
+    val lyrics: LyricsResult? = null,
+    val lyricsList: LyricsList? = null,
     val error: SubsonicError? = null
+)
+
+data class LyricsResult(
+    val artist: String? = null,
+    val title: String? = null,
+    val value: String? = null
+)
+
+data class LyricsList(
+    val structuredLyrics: List<StructuredLyrics>? = null
+)
+
+data class StructuredLyrics(
+    val lang: String? = null,
+    val synced: Boolean = false,
+    val line: List<LyricsLine>? = null
+)
+
+data class LyricsLine(
+    val start: Long? = null,
+    val value: String? = null
 )
 
 data class SearchResult2(

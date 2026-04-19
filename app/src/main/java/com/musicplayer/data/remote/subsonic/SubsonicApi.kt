@@ -172,6 +172,29 @@ interface SubsonicApi {
         @Query("f") format: String = "json"
     ): SubsonicResponse<IndexesResult>
 
+    @GET("rest/getLyrics")
+    suspend fun getLyrics(
+        @Query("artist") artist: String,
+        @Query("title") title: String,
+        @Query("u") username: String,
+        @Query("t") token: String,
+        @Query("s") salt: String,
+        @Query("v") version: String = "1.16.1",
+        @Query("c") client: String = "MusicPlayer",
+        @Query("f") format: String = "json"
+    ): SubsonicResponse<LyricsResult>
+
+    @GET("rest/getLyricsBySongId")
+    suspend fun getLyricsBySongId(
+        @Query("id") songId: String,
+        @Query("u") username: String,
+        @Query("t") token: String,
+        @Query("s") salt: String,
+        @Query("v") version: String = "1.16.1",
+        @Query("c") client: String = "MusicPlayer",
+        @Query("f") format: String = "json"
+    ): SubsonicResponse<LyricsList>
+
     @GET("rest/stream")
     suspend fun getStreamUrl(
         @Query("id") songId: String,

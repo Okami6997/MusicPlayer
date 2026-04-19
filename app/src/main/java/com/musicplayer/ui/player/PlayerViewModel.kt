@@ -5,6 +5,8 @@ import androidx.lifecycle.viewModelScope
 import androidx.media3.common.MediaItem
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
+import com.musicplayer.data.lyrics.LyricsLoader
+import com.musicplayer.domain.model.Lyrics
 import com.musicplayer.domain.model.PlayerState
 import com.musicplayer.domain.model.PlayerUiState
 import com.musicplayer.domain.model.RepeatMode
@@ -24,14 +26,17 @@ import javax.inject.Inject
 
 @HiltViewModel
 class PlayerViewModel @Inject constructor(
-    private val playerHolder: PlayerHolder
+    private val playerHolder: PlayerHolder,
+    private val lyricsLoader: LyricsLoader
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(PlayerUiState())
     val uiState: StateFlow<PlayerUiState> = _uiState.asStateFlow()
 
     private var progressJob: Job? = null
+    private var lyricsJob: Job? = null
     private var lastPlayer: Player? = null
+    private var lastLoadedTrackId: String? = null
 
     private val playerListener = object : Player.Listener {
         override fun onPlaybackStateChanged(playbackState: Int) {
@@ -121,6 +126,23 @@ class PlayerViewModel @Inject constructor(
                 durationMs = player.duration.takeIf { it > 0 } ?: 0L
             )
         }
+
+        if (track != null && track.id != lastLoadedTrackId) {
+            lastLoadedTrackId = track.id
+            loadLyrics(track)
+        } else if (track == null) {
+            lastLoadedTrackId = null
+            _uiState.update { it.copy(lyrics = null, currentLyricsLineIndex = -1) }
+        }
+    }
+
+    private fun loadLyrics(track: Track) {
+        lyricsJob?.cancel()
+        lyricsJob = viewModelScope.launch {
+            _uiState.update { it.copy(lyrics = null, currentLyricsLineIndex = -1) }
+            val lyrics = lyricsLoader.loadLyrics(track)
+            _uiState.update { it.copy(lyrics = lyrics, currentLyricsLineIndex = -1) }
+        }
     }
 
     private fun startProgressUpdates() {
@@ -128,10 +150,29 @@ class PlayerViewModel @Inject constructor(
         progressJob = viewModelScope.launch {
             while (isActive) {
                 val player = playerHolder.currentPlayer
-                _uiState.update { it.copy(currentPositionMs = player.currentPosition) }
+                val posMs = player.currentPosition
+                val lyrics = _uiState.value.lyrics
+                val lineIndex = if (lyrics != null && lyrics.isSynced) {
+                    findCurrentLyricsLine(posMs, lyrics)
+                } else -1
+                _uiState.update {
+                    it.copy(currentPositionMs = posMs, currentLyricsLineIndex = lineIndex)
+                }
                 delay(500)
             }
         }
+    }
+
+    private fun findCurrentLyricsLine(positionMs: Long, lyrics: Lyrics): Int {
+        var idx = -1
+        for (i in lyrics.lines.indices) {
+            if (lyrics.lines[i].timeMs <= positionMs) idx = i else break
+        }
+        return idx
+    }
+
+    fun toggleLyrics() {
+        _uiState.update { it.copy(showLyrics = !it.showLyrics) }
     }
 
     fun playTracks(tracks: List<Track>, startIndex: Int = 0) {
@@ -185,6 +226,7 @@ class PlayerViewModel @Inject constructor(
     override fun onCleared() {
         lastPlayer?.removeListener(playerListener)
         progressJob?.cancel()
+        lyricsJob?.cancel()
         super.onCleared()
     }
 }

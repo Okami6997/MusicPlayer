@@ -37,7 +37,7 @@
     <uses-permission android:name="android.permission.CHANGE_NETWORK_STATE" />
 
     <application
-        android:name=".MusicPlayerApp"
+        android:name="com.musicplayer.MusicPlayerApp"
         android:allowBackup="true"
         android:dataExtractionRules="@xml/data_extraction_rules"
         android:fullBackupContent="@xml/backup_rules"
@@ -51,7 +51,7 @@
 
         <!-- Main activity -->
         <activity
-            android:name=".ui.MainActivity"
+            android:name="com.musicplayer.ui.MainActivity"
             android:exported="true"
             android:launchMode="singleTop"
             android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize"
@@ -64,7 +64,7 @@
 
         <!-- Media playback service (foreground) -->
         <service
-            android:name=".service.MusicPlaybackService"
+            android:name="com.musicplayer.service.MusicPlaybackService"
             android:exported="true"
             android:foregroundServiceType="mediaPlayback">
             <intent-filter>
