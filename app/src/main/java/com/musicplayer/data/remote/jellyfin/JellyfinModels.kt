@@ -47,3 +47,14 @@ data class JellyfinMediaSource(
     @SerializedName("Size") val size: Long = 0,
     @SerializedName("Container") val container: String = ""
 )
+
+data class JellyfinPublicInfo(
+    @SerializedName("ServerName") val serverName: String = "",
+    @SerializedName("Version") val version: String = "",
+    @SerializedName("Id") val id: String = ""
+)
+
+data class JellyfinAuthBody(
+    @SerializedName("Username") val username: String,
+    @SerializedName("Pw") val password: String
+)

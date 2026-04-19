@@ -4,13 +4,24 @@ import com.musicplayer.data.local.LocalMediaScanner
 import com.musicplayer.data.local.MediaSourceDao
 import com.musicplayer.data.local.PlaylistDao
 import com.musicplayer.data.local.TrackDao
+import com.musicplayer.data.remote.jellyfin.JellyfinApi
+import com.musicplayer.data.remote.jellyfin.JellyfinClient
+import com.musicplayer.data.remote.plex.PlexApi
+import com.musicplayer.data.remote.plex.PlexClient
+import com.musicplayer.data.remote.subsonic.SubsonicApi
+import com.musicplayer.data.remote.subsonic.SubsonicClient
 import com.musicplayer.domain.model.MediaSource
 import com.musicplayer.domain.model.MediaSourceType
 import com.musicplayer.domain.model.Playlist
 import com.musicplayer.domain.model.Track
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
+import okhttp3.OkHttpClient
+import okhttp3.logging.HttpLoggingInterceptor
+import retrofit2.Retrofit
+import retrofit2.converter.gson.GsonConverterFactory
 import timber.log.Timber
+import java.util.concurrent.TimeUnit
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -23,7 +34,10 @@ class MusicRepository @Inject constructor(
     private val trackDao: TrackDao,
     private val mediaSourceDao: MediaSourceDao,
     private val playlistDao: PlaylistDao,
-    private val localMediaScanner: LocalMediaScanner
+    private val localMediaScanner: LocalMediaScanner,
+    private val subsonicClient: SubsonicClient,
+    private val jellyfinClient: JellyfinClient,
+    private val plexClient: PlexClient
 ) {
     // ── Tracks ────────────────────────────────────────────────────────────────
 
@@ -99,5 +113,112 @@ class MusicRepository @Inject constructor(
     suspend fun deletePlaylist(id: String) {
         playlistDao.deletePlaylistTracks(id)
         playlistDao.deletePlaylist(id)
+    }
+
+    // ── Source synchronization ─────────────────────────────────────────────
+
+    private fun createHttpClient(): OkHttpClient {
+        val loggingInterceptor = HttpLoggingInterceptor().apply {
+            level = HttpLoggingInterceptor.Level.BODY
+        }
+        return OkHttpClient.Builder()
+            .addInterceptor(loggingInterceptor)
+            .connectTimeout(60, TimeUnit.SECONDS)
+            .readTimeout(60, TimeUnit.SECONDS)
+            .writeTimeout(60, TimeUnit.SECONDS)
+            .build()
+    }
+
+    private inline fun <reified T> createApi(source: MediaSource): T {
+        return Retrofit.Builder()
+            .baseUrl(source.baseUrl.trimEnd('/') + "/")
+            .client(createHttpClient())
+            .addConverterFactory(GsonConverterFactory.create())
+            .build()
+            .create(T::class.java)
+    }
+
+    /**
+     * Syncs/fetches all tracks from a media source.
+     */
+    suspend fun syncSource(source: MediaSource): List<Track> {
+        return when (source.type) {
+            MediaSourceType.LOCAL -> {
+                scanLocalLibrary()
+            }
+            MediaSourceType.SUBSONIC,
+            MediaSourceType.OPEN_SUBSONIC,
+            MediaSourceType.NAVIDROME -> {
+                syncSubsonicSource(source)
+            }
+            MediaSourceType.JELLYFIN,
+            MediaSourceType.EMBY -> {
+                syncJellyfinSource(source)
+            }
+            MediaSourceType.PLEX -> {
+                syncPlexSource(source)
+            }
+            MediaSourceType.AUDIOBOOKSHELF,
+            MediaSourceType.CLOUD_DRIVE -> {
+                Timber.w("Sync not supported for source type: ${source.type}")
+                emptyList()
+            }
+        }
+    }
+
+    /**
+     * Fetches all tracks from a Subsonic-compatible server.
+     */
+    private suspend fun syncSubsonicSource(source: MediaSource): List<Track> {
+        return try {
+            Timber.d("Starting sync for Subsonic source: ${source.name}")
+            val api = createApi<SubsonicApi>(source)
+            val tracks = subsonicClient.fetchAllTracks(api, source)
+            persistSyncedTracks(source.id, tracks, source.name)
+            tracks
+        } catch (e: Exception) {
+            Timber.e(e, "Error syncing Subsonic source: ${source.name}")
+            throw e
+        }
+    }
+
+    /**
+     * Fetches all tracks from a Jellyfin/Emby server.
+     */
+    private suspend fun syncJellyfinSource(source: MediaSource): List<Track> {
+        return try {
+            Timber.d("Starting sync for Jellyfin/Emby source: ${source.name}")
+            val api = createApi<JellyfinApi>(source)
+            val tracks = jellyfinClient.fetchAllTracks(api, source)
+            persistSyncedTracks(source.id, tracks, source.name)
+            tracks
+        } catch (e: Exception) {
+            Timber.e(e, "Error syncing Jellyfin/Emby source: ${source.name}")
+            throw e
+        }
+    }
+
+    /**
+     * Fetches all tracks from a Plex Media Server.
+     */
+    private suspend fun syncPlexSource(source: MediaSource): List<Track> {
+        return try {
+            Timber.d("Starting sync for Plex source: ${source.name}")
+            val api = createApi<PlexApi>(source)
+            val tracks = plexClient.fetchAllTracks(api, source)
+            persistSyncedTracks(source.id, tracks, source.name)
+            tracks
+        } catch (e: Exception) {
+            Timber.e(e, "Error syncing Plex source: ${source.name}")
+            throw e
+        }
+    }
+
+    private suspend fun persistSyncedTracks(sourceId: String, tracks: List<Track>, sourceName: String) {
+        if (tracks.isNotEmpty()) {
+            trackDao.deleteTracksBySource(sourceId)
+            trackDao.upsertTracks(tracks.map { it.toEntity() })
+            Timber.d("Synced ${tracks.size} tracks from $sourceName")
+        }
     }
 }

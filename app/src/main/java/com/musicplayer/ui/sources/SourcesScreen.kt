@@ -13,6 +13,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.musicplayer.domain.model.MediaSource
 import com.musicplayer.domain.model.MediaSourceType
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -22,6 +23,19 @@ fun SourcesScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     var showAddDialog by remember { mutableStateOf(false) }
+    var showEditDialog by remember { mutableStateOf(false) }
+    var sourceToEdit by remember { mutableStateOf<MediaSource?>(null) }
+    val snackbarHostState = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
+
+    LaunchedEffect(uiState.scanProgress) {
+        if (uiState.scanProgress.isNotEmpty()) {
+            val result = snackbarHostState.showSnackbar(
+                message = uiState.scanProgress,
+                duration = SnackbarDuration.Short
+            )
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -31,9 +45,22 @@ fun SourcesScreen(
                     IconButton(onClick = onNavigateBack) {
                         Icon(Icons.Default.ArrowBack, contentDescription = "Back")
                     }
+                },
+                actions = {
+                    if (uiState.isScanning) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(24.dp),
+                            strokeWidth = 2.dp
+                        )
+                    } else {
+                        IconButton(onClick = { viewModel.scanLocalLibrary() }) {
+                            Icon(Icons.Default.Refresh, contentDescription = "Scan Library")
+                        }
+                    }
                 }
             )
         },
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         floatingActionButton = {
             FloatingActionButton(onClick = { showAddDialog = true }) {
                 Icon(Icons.Default.Add, contentDescription = "Add source")
@@ -44,7 +71,12 @@ fun SourcesScreen(
             items(uiState.sources) { source ->
                 SourceListItem(
                     source = source,
-                    onDelete = { viewModel.deleteSource(source.id) }
+                    onEdit = {
+                        sourceToEdit = source
+                        showEditDialog = true
+                    },
+                    onDelete = { viewModel.deleteSource(source.id) },
+                    onScan = { viewModel.scanSource(source) }
                 )
                 HorizontalDivider()
             }
@@ -74,7 +106,24 @@ fun SourcesScreen(
             onAdd = { source ->
                 viewModel.addSource(source)
                 showAddDialog = false
-            }
+            },
+            viewModel = viewModel
+        )
+    }
+
+    if (showEditDialog && sourceToEdit != null) {
+        EditSourceDialog(
+            source = sourceToEdit!!,
+            onDismiss = {
+                showEditDialog = false
+                sourceToEdit = null
+            },
+            onSave = { updatedSource ->
+                viewModel.updateSource(updatedSource)
+                showEditDialog = false
+                sourceToEdit = null
+            },
+            viewModel = viewModel
         )
     }
 }
@@ -82,7 +131,9 @@ fun SourcesScreen(
 @Composable
 private fun SourceListItem(
     source: MediaSource,
-    onDelete: () -> Unit
+    onEdit: () -> Unit,
+    onDelete: () -> Unit,
+    onScan: () -> Unit
 ) {
     ListItem(
         headlineContent = { Text(source.name) },
@@ -102,8 +153,16 @@ private fun SourceListItem(
             )
         },
         trailingContent = {
-            IconButton(onClick = onDelete) {
-                Icon(Icons.Default.Delete, contentDescription = "Delete source")
+            Row {
+                IconButton(onClick = onScan) {
+                    Icon(Icons.Default.Refresh, contentDescription = "Scan source")
+                }
+                IconButton(onClick = onEdit) {
+                    Icon(Icons.Default.Edit, contentDescription = "Edit source")
+                }
+                IconButton(onClick = onDelete) {
+                    Icon(Icons.Default.Delete, contentDescription = "Delete source")
+                }
             }
         }
     )
@@ -113,13 +172,17 @@ private fun SourceListItem(
 @Composable
 private fun AddSourceDialog(
     onDismiss: () -> Unit,
-    onAdd: (MediaSource) -> Unit
+    onAdd: (MediaSource) -> Unit,
+    viewModel: SourcesViewModel
 ) {
     var name by remember { mutableStateOf("") }
     var baseUrl by remember { mutableStateOf("") }
     var username by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var selectedType by remember { mutableStateOf(MediaSourceType.JELLYFIN) }
+    var isTestingConnection by remember { mutableStateOf(false) }
+    var testResult by remember { mutableStateOf<TestConnectionResult?>(null) }
+    val scope = rememberCoroutineScope()
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -174,6 +237,60 @@ private fun AddSourceDialog(
                         label = { Text("Password") },
                         modifier = Modifier.fillMaxWidth()
                     )
+
+                    // Test connection button
+                    OutlinedButton(
+                        onClick = {
+                            isTestingConnection = true
+                            val testSource = MediaSource(
+                                id = "",
+                                name = name.ifBlank { selectedType.name },
+                                type = selectedType,
+                                baseUrl = baseUrl.trimEnd('/'),
+                                username = username,
+                                password = password
+                            )
+                            scope.launch {
+                                testResult = viewModel.testConnection(testSource)
+                                isTestingConnection = false
+                            }
+                        },
+                        enabled = baseUrl.isNotBlank() && username.isNotBlank() && password.isNotBlank(),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        if (isTestingConnection) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(16.dp),
+                                strokeWidth = 2.dp
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("Testing...")
+                        } else {
+                            Icon(Icons.Default.NetworkCheck, contentDescription = null)
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("Test Connection")
+                        }
+                    }
+
+                    // Test result display
+                    testResult?.let { result ->
+                        when (result) {
+                            is TestConnectionResult.Success -> {
+                                Text(
+                                    "Connection successful!",
+                                    color = MaterialTheme.colorScheme.primary,
+                                    style = MaterialTheme.typography.bodySmall
+                                )
+                            }
+                            is TestConnectionResult.Error -> {
+                                Text(
+                                    "Connection failed: ${result.message}",
+                                    color = MaterialTheme.colorScheme.error,
+                                    style = MaterialTheme.typography.bodySmall
+                                )
+                            }
+                        }
+                    }
                 }
             }
         },
@@ -194,6 +311,147 @@ private fun AddSourceDialog(
                 enabled = name.isNotBlank() || selectedType == MediaSourceType.LOCAL
             ) {
                 Text("Add")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("Cancel") }
+        }
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun EditSourceDialog(
+    source: MediaSource,
+    onDismiss: () -> Unit,
+    onSave: (MediaSource) -> Unit,
+    viewModel: SourcesViewModel
+) {
+    var name by remember { mutableStateOf(source.name) }
+    var baseUrl by remember { mutableStateOf(source.baseUrl) }
+    var username by remember { mutableStateOf(source.username) }
+    var password by remember { mutableStateOf(source.password) }
+    var selectedType by remember { mutableStateOf(source.type) }
+    var isTestingConnection by remember { mutableStateOf(false) }
+    var testResult by remember { mutableStateOf<TestConnectionResult?>(null) }
+    val scope = rememberCoroutineScope()
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Edit Music Source") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedTextField(
+                    value = name,
+                    onValueChange = { name = it },
+                    label = { Text("Name") },
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                // Source type selector (read-only for editing)
+                ExposedDropdownMenuBox(expanded = false, onExpandedChange = {}) {
+                    OutlinedTextField(
+                        value = selectedType.name,
+                        onValueChange = {},
+                        readOnly = true,
+                        label = { Text("Type") },
+                        modifier = Modifier.fillMaxWidth().menuAnchor(),
+                        enabled = false
+                    )
+                }
+
+                if (selectedType != MediaSourceType.LOCAL) {
+                    OutlinedTextField(
+                        value = baseUrl,
+                        onValueChange = { baseUrl = it },
+                        label = { Text("Server URL") },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    OutlinedTextField(
+                        value = username,
+                        onValueChange = { username = it },
+                        label = { Text("Username") },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    OutlinedTextField(
+                        value = password,
+                        onValueChange = { password = it },
+                        label = { Text("Password") },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+
+                    // Test connection button
+                    OutlinedButton(
+                        onClick = {
+                            isTestingConnection = true
+                            val testSource = MediaSource(
+                                id = source.id,
+                                name = name,
+                                type = selectedType,
+                                baseUrl = baseUrl.trimEnd('/'),
+                                username = username,
+                                password = password
+                            )
+                            scope.launch {
+                                testResult = viewModel.testConnection(testSource)
+                                isTestingConnection = false
+                            }
+                        },
+                        enabled = baseUrl.isNotBlank() && username.isNotBlank() && password.isNotBlank(),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        if (isTestingConnection) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(16.dp),
+                                strokeWidth = 2.dp
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("Testing...")
+                        } else {
+                            Icon(Icons.Default.NetworkCheck, contentDescription = null)
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("Test Connection")
+                        }
+                    }
+
+                    // Test result display
+                    testResult?.let { result ->
+                        when (result) {
+                            is TestConnectionResult.Success -> {
+                                Text(
+                                    "Connection successful!",
+                                    color = MaterialTheme.colorScheme.primary,
+                                    style = MaterialTheme.typography.bodySmall
+                                )
+                            }
+                            is TestConnectionResult.Error -> {
+                                Text(
+                                    "Connection failed: ${result.message}",
+                                    color = MaterialTheme.colorScheme.error,
+                                    style = MaterialTheme.typography.bodySmall
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(
+                onClick = {
+                    onSave(
+                        source.copy(
+                            name = name,
+                            type = selectedType,
+                            baseUrl = baseUrl.trimEnd('/'),
+                            username = username,
+                            password = password
+                        )
+                    )
+                },
+                enabled = name.isNotBlank() || selectedType == MediaSourceType.LOCAL
+            ) {
+                Text("Save")
             }
         },
         dismissButton = {

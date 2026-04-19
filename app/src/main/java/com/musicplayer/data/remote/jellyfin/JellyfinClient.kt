@@ -26,6 +26,55 @@ class JellyfinClient @Inject constructor() {
         "$baseUrl/Items/$itemId/Images/$imageType?maxWidth=300&quality=90"
 
     /**
+     * Fetches all audio tracks from a Jellyfin/Emby server.
+     */
+    suspend fun fetchAllTracks(api: JellyfinApi, source: MediaSource): List<Track> {
+        val tracks = mutableListOf<Track>()
+        var startIndex = 0
+        val pageSize = 500
+
+        while (true) {
+            Timber.d("Fetching Jellyfin items startIndex=$startIndex limit=$pageSize")
+            val response = api.getItems(
+                token = source.token,
+                startIndex = startIndex,
+                limit = pageSize
+            )
+            val items = response.items
+            if (items.isEmpty()) break
+
+            Timber.d("Got ${items.size} items (total: ${response.totalRecordCount})")
+            for (item in items) {
+                tracks.add(item.toTrack(source))
+            }
+
+            if (items.size < pageSize) break
+            startIndex += pageSize
+        }
+
+        Timber.d("fetchAllTracks complete: ${tracks.size} total tracks from Jellyfin")
+        return tracks
+    }
+
+    /**
+     * Tests connectivity to a Jellyfin/Emby server by hitting the public info endpoint.
+     */
+    suspend fun testConnection(api: JellyfinApi, source: MediaSource): Boolean {
+        return try {
+            val info = api.getPublicInfo()
+            Timber.d("Jellyfin server: ${info.serverName} v${info.version}")
+
+            // Also verify API key by fetching items with limit 1
+            val items = api.getItems(token = source.token, limit = 1)
+            Timber.d("Jellyfin auth OK, total items: ${items.totalRecordCount}")
+            true
+        } catch (e: Exception) {
+            Timber.e(e, "Jellyfin connection test failed")
+            false
+        }
+    }
+
+    /**
      * Convert a [JellyfinItem] (of type "Audio") to a [Track].
      */
     fun JellyfinItem.toTrack(source: MediaSource): Track {

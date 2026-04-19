@@ -9,6 +9,10 @@ import com.musicplayer.ui.home.HomeScreen
 import com.musicplayer.ui.library.LibraryScreen
 import com.musicplayer.ui.player.PlayerScreen
 import com.musicplayer.ui.search.SearchScreen
+import com.musicplayer.ui.settings.AppearanceScreen
+import com.musicplayer.ui.settings.AudioScreen
+import com.musicplayer.ui.settings.AndroidAutoScreen
+import com.musicplayer.ui.settings.DownloadsScreen
 import com.musicplayer.ui.settings.SettingsScreen
 import com.musicplayer.ui.sources.SourcesScreen
 
@@ -19,6 +23,10 @@ sealed class Screen(val route: String) {
     data object Search : Screen("search")
     data object Settings : Screen("settings")
     data object Sources : Screen("sources")
+    data object Appearance : Screen("appearance")
+    data object Audio : Screen("audio")
+    data object Downloads : Screen("downloads")
+    data object AndroidAuto : Screen("android_auto")
 }
 
 @Composable
@@ -57,11 +65,35 @@ fun MusicPlayerNavGraph(
         composable(Screen.Settings.route) {
             SettingsScreen(
                 onNavigateToSources = { navController.navigate(Screen.Sources.route) },
+                onNavigateToAppearance = { navController.navigate(Screen.Appearance.route) },
+                onNavigateToAudio = { navController.navigate(Screen.Audio.route) },
+                onNavigateToDownloads = { navController.navigate(Screen.Downloads.route) },
+                onNavigateToAndroidAuto = { navController.navigate(Screen.AndroidAuto.route) },
                 onNavigateBack = { navController.popBackStack() }
             )
         }
         composable(Screen.Sources.route) {
             SourcesScreen(
+                onNavigateBack = { navController.popBackStack() }
+            )
+        }
+        composable(Screen.Appearance.route) {
+            AppearanceScreen(
+                onNavigateBack = { navController.popBackStack() }
+            )
+        }
+        composable(Screen.Audio.route) {
+            AudioScreen(
+                onNavigateBack = { navController.popBackStack() }
+            )
+        }
+        composable(Screen.Downloads.route) {
+            DownloadsScreen(
+                onNavigateBack = { navController.popBackStack() }
+            )
+        }
+        composable(Screen.AndroidAuto.route) {
+            AndroidAutoScreen(
                 onNavigateBack = { navController.popBackStack() }
             )
         }

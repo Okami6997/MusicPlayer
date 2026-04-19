@@ -25,37 +25,54 @@ class SubsonicClient @Inject constructor() {
         var offset = 0
         val pageSize = 500
 
-        try {
-            while (true) {
-                val response = api.getAlbumList(
-                    username = source.username,
-                    token = token,
-                    salt = salt,
-                    offset = offset,
-                    size = pageSize
-                )
-                val albums = response.response.albumList2?.album ?: break
-                if (albums.isEmpty()) break
+        while (true) {
+            Timber.d("Fetching album list offset=$offset size=$pageSize")
+            val response = api.getAlbumList(
+                username = source.username,
+                token = token,
+                salt = salt,
+                offset = offset,
+                size = pageSize
+            )
 
-                for (album in albums) {
+            val body = response.response
+            body.error?.let { error ->
+                throw RuntimeException("Subsonic API error ${error.code}: ${error.message}")
+            }
+
+            val albums = body.albumList2?.album
+            if (albums.isNullOrEmpty()) {
+                Timber.d("No more albums at offset=$offset")
+                break
+            }
+
+            Timber.d("Got ${albums.size} albums at offset=$offset")
+
+            for (album in albums) {
+                try {
                     val albumResp = api.getAlbum(
                         albumId = album.id,
                         username = source.username,
                         token = token,
                         salt = salt
                     )
-                    albumResp.response.album?.song?.forEach { song ->
-                        tracks.add(song.toTrack(source))
+                    albumResp.response.error?.let { error ->
+                        Timber.w("Error fetching album ${album.id}: ${error.message}")
+                        return@let
                     }
+                    val songs = albumResp.response.album?.song ?: emptyList()
+                    Timber.d("Album '${album.name}': ${songs.size} songs")
+                    songs.forEach { song -> tracks.add(song.toTrack(source)) }
+                } catch (e: Exception) {
+                    Timber.w(e, "Skipping album ${album.id} (${album.name}): ${e.message}")
                 }
-
-                if (albums.size < pageSize) break
-                offset += pageSize
             }
-        } catch (e: Exception) {
-            Timber.e(e, "Error fetching tracks from Subsonic source: ${source.name}")
+
+            if (albums.size < pageSize) break
+            offset += pageSize
         }
 
+        Timber.d("fetchAllTracks complete: ${tracks.size} total tracks")
         return tracks
     }
 

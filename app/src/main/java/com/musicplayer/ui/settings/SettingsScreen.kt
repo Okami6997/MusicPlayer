@@ -1,5 +1,6 @@
 package com.musicplayer.ui.settings
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
@@ -14,6 +15,10 @@ import androidx.hilt.navigation.compose.hiltViewModel
 @Composable
 fun SettingsScreen(
     onNavigateToSources: () -> Unit,
+    onNavigateToAppearance: () -> Unit,
+    onNavigateToAudio: () -> Unit,
+    onNavigateToDownloads: () -> Unit,
+    onNavigateToAndroidAuto: () -> Unit,
     onNavigateBack: () -> Unit,
     viewModel: SettingsViewModel = hiltViewModel()
 ) {
@@ -42,7 +47,9 @@ fun SettingsScreen(
                     supportingContent = { Text("Manage Plex, Emby, Jellyfin, Subsonic and cloud sources") },
                     leadingContent = { Icon(Icons.Default.Storage, contentDescription = null) },
                     trailingContent = { Icon(Icons.Default.ChevronRight, contentDescription = null) },
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { onNavigateToSources() }
                 )
                 HorizontalDivider()
             }
@@ -51,7 +58,11 @@ fun SettingsScreen(
                 ListItem(
                     headlineContent = { Text("Appearance") },
                     supportingContent = { Text("Theme, dynamic color") },
-                    leadingContent = { Icon(Icons.Default.Palette, contentDescription = null) }
+                    leadingContent = { Icon(Icons.Default.Palette, contentDescription = null) },
+                    trailingContent = { Icon(Icons.Default.ChevronRight, contentDescription = null) },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { onNavigateToAppearance() }
                 )
                 HorizontalDivider()
             }
@@ -60,7 +71,11 @@ fun SettingsScreen(
                 ListItem(
                     headlineContent = { Text("Audio") },
                     supportingContent = { Text("Equalizer, crossfade, gapless playback") },
-                    leadingContent = { Icon(Icons.Default.Equalizer, contentDescription = null) }
+                    leadingContent = { Icon(Icons.Default.Equalizer, contentDescription = null) },
+                    trailingContent = { Icon(Icons.Default.ChevronRight, contentDescription = null) },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { onNavigateToAudio() }
                 )
                 HorizontalDivider()
             }
@@ -69,7 +84,11 @@ fun SettingsScreen(
                 ListItem(
                     headlineContent = { Text("Offline / Downloads") },
                     supportingContent = { Text("Manage offline cache and downloads") },
-                    leadingContent = { Icon(Icons.Default.Download, contentDescription = null) }
+                    leadingContent = { Icon(Icons.Default.Download, contentDescription = null) },
+                    trailingContent = { Icon(Icons.Default.ChevronRight, contentDescription = null) },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { onNavigateToDownloads() }
                 )
                 HorizontalDivider()
             }
@@ -78,7 +97,11 @@ fun SettingsScreen(
                 ListItem(
                     headlineContent = { Text("Android Auto") },
                     supportingContent = { Text("Configure Android Auto preferences") },
-                    leadingContent = { Icon(Icons.Default.DirectionsCar, contentDescription = null) }
+                    leadingContent = { Icon(Icons.Default.DirectionsCar, contentDescription = null) },
+                    trailingContent = { Icon(Icons.Default.ChevronRight, contentDescription = null) },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { onNavigateToAndroidAuto() }
                 )
                 HorizontalDivider()
             }
