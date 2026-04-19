@@ -6,6 +6,8 @@ import com.musicplayer.data.local.PlaylistDao
 import com.musicplayer.data.local.TrackDao
 import com.musicplayer.data.remote.jellyfin.JellyfinApi
 import com.musicplayer.data.remote.jellyfin.JellyfinClient
+import com.musicplayer.data.remote.navidrome.NavidromeApi
+import com.musicplayer.data.remote.navidrome.NavidromeClient
 import com.musicplayer.data.remote.plex.PlexApi
 import com.musicplayer.data.remote.plex.PlexClient
 import com.musicplayer.data.remote.subsonic.SubsonicApi
@@ -36,6 +38,7 @@ class MusicRepository @Inject constructor(
     private val playlistDao: PlaylistDao,
     private val localMediaScanner: LocalMediaScanner,
     private val subsonicClient: SubsonicClient,
+    private val navidromeClient: NavidromeClient,
     private val jellyfinClient: JellyfinClient,
     private val plexClient: PlexClient
 ) {
@@ -147,9 +150,11 @@ class MusicRepository @Inject constructor(
                 scanLocalLibrary()
             }
             MediaSourceType.SUBSONIC,
-            MediaSourceType.OPEN_SUBSONIC,
-            MediaSourceType.NAVIDROME -> {
+            MediaSourceType.OPEN_SUBSONIC -> {
                 syncSubsonicSource(source)
+            }
+            MediaSourceType.NAVIDROME -> {
+                syncNavidromeSource(source)
             }
             MediaSourceType.JELLYFIN,
             MediaSourceType.EMBY -> {
@@ -178,6 +183,22 @@ class MusicRepository @Inject constructor(
             tracks
         } catch (e: Exception) {
             Timber.e(e, "Error syncing Subsonic source: ${source.name}")
+            throw e
+        }
+    }
+
+    /**
+     * Fetches all tracks from a Navidrome server using the native API.
+     */
+    private suspend fun syncNavidromeSource(source: MediaSource): List<Track> {
+        return try {
+            Timber.d("Starting sync for Navidrome source: ${source.name}")
+            val api = createApi<NavidromeApi>(source)
+            val tracks = navidromeClient.fetchAllTracks(api, source)
+            persistSyncedTracks(source.id, tracks, source.name)
+            tracks
+        } catch (e: Exception) {
+            Timber.e(e, "Error syncing Navidrome source: ${source.name}")
             throw e
         }
     }

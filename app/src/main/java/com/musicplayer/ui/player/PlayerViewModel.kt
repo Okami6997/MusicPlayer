@@ -3,6 +3,7 @@ package com.musicplayer.ui.player
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.media3.common.MediaItem
+import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import com.musicplayer.domain.model.PlayerState
 import com.musicplayer.domain.model.PlayerUiState
@@ -18,6 +19,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import timber.log.Timber
 import javax.inject.Inject
 
 @HiltViewModel
@@ -29,6 +31,7 @@ class PlayerViewModel @Inject constructor(
     val uiState: StateFlow<PlayerUiState> = _uiState.asStateFlow()
 
     private var progressJob: Job? = null
+    private var lastPlayer: Player? = null
 
     private val playerListener = object : Player.Listener {
         override fun onPlaybackStateChanged(playbackState: Int) {
@@ -36,35 +39,85 @@ class PlayerViewModel @Inject constructor(
         }
         override fun onIsPlayingChanged(isPlaying: Boolean) {
             updatePlaybackState()
+            updateCurrentTrack()
+        }
+        override fun onPlayWhenReadyChanged(playWhenReady: Boolean, reason: Int) {
+            updatePlaybackState()
         }
         override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
             updateCurrentTrack()
         }
+        override fun onShuffleModeEnabledChanged(shuffleModeEnabled: Boolean) {
+            _uiState.update { it.copy(isShuffleEnabled = shuffleModeEnabled) }
+        }
+        override fun onRepeatModeChanged(repeatMode: Int) {
+            _uiState.update {
+                it.copy(
+                    repeatMode = when (repeatMode) {
+                        Player.REPEAT_MODE_ONE -> RepeatMode.ONE
+                        Player.REPEAT_MODE_ALL -> RepeatMode.ALL
+                        else -> RepeatMode.OFF
+                    }
+                )
+            }
+        }
+        override fun onPlayerError(error: PlaybackException) {
+            Timber.e(error, "Player error: ${error.message}")
+            updatePlaybackState()
+        }
     }
 
     init {
-        playerHolder.currentPlayer.addListener(playerListener)
+        viewModelScope.launch {
+            playerHolder.queue.collect {
+                updateCurrentTrack()
+            }
+        }
+        viewModelScope.launch {
+            playerHolder.currentPlayerFlow.collect { player ->
+                lastPlayer?.removeListener(playerListener)
+                player.addListener(playerListener)
+                lastPlayer = player
+
+                @androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
+                val isCasting = player is androidx.media3.cast.CastPlayer
+                _uiState.update { it.copy(castDevice = if (isCasting) "Chromecast" else null) }
+
+                updatePlaybackState()
+                updateCurrentTrack()
+            }
+        }
         startProgressUpdates()
     }
 
     private fun updatePlaybackState() {
         val player = playerHolder.currentPlayer
         val state = when {
-            player.playbackState == Player.STATE_BUFFERING -> PlayerState.LOADING
-            player.isPlaying -> PlayerState.PLAYING
+            player.playbackState == Player.STATE_IDLE -> PlayerState.IDLE
+            player.playbackState == Player.STATE_BUFFERING && player.playWhenReady -> PlayerState.LOADING
+            player.playWhenReady && player.playbackState != Player.STATE_ENDED -> PlayerState.PLAYING
             player.playbackState == Player.STATE_ENDED -> PlayerState.STOPPED
-            player.playWhenReady -> PlayerState.PAUSED
             else -> PlayerState.PAUSED
         }
-        _uiState.update { it.copy(playerState = state) }
+        _uiState.update { it.copy(
+            playerState = state,
+            playWhenReady = player.playWhenReady
+        ) }
     }
 
     private fun updateCurrentTrack() {
         val player = playerHolder.currentPlayer
-        val mediaItem = player.currentMediaItem ?: return
-        // Map back to Track from extras — in a real app you'd look up the track by id
+        val mediaItem = player.currentMediaItem
+        val queue = playerHolder.queue.value
+        val track = if (mediaItem != null) {
+            queue.find { it.id == mediaItem.mediaId }
+        } else null
+
         _uiState.update { current ->
             current.copy(
+                currentTrack = track,
+                queue = queue,
+                currentQueueIndex = player.currentMediaItemIndex,
                 durationMs = player.duration.takeIf { it > 0 } ?: 0L
             )
         }
@@ -82,30 +135,19 @@ class PlayerViewModel @Inject constructor(
     }
 
     fun playTracks(tracks: List<Track>, startIndex: Int = 0) {
-        val player = playerHolder.currentPlayer
-        val mediaItems = tracks.map { track ->
-            MediaItem.Builder()
-                .setMediaId(track.id)
-                .setUri(track.uri)
-                .setMediaMetadata(
-                    androidx.media3.common.MediaMetadata.Builder()
-                        .setTitle(track.title)
-                        .setArtist(track.artist)
-                        .setAlbumTitle(track.album)
-                        .setArtworkUri(track.artworkUri?.let { android.net.Uri.parse(it) })
-                        .build()
-                )
-                .build()
-        }
-        player.setMediaItems(mediaItems, startIndex, 0)
-        player.prepare()
-        player.play()
-        _uiState.update { it.copy(queue = tracks, currentQueueIndex = startIndex) }
+        playerHolder.playTracks(tracks, startIndex)
+        updateCurrentTrack()
     }
 
     fun togglePlayPause() {
         val player = playerHolder.currentPlayer
-        if (player.isPlaying) player.pause() else player.play()
+        if (player.playbackState == Player.STATE_IDLE || player.playbackState == Player.STATE_ENDED) {
+            player.prepare()
+            player.play()
+        } else {
+            if (player.playWhenReady) player.pause() else player.play()
+        }
+        updatePlaybackState()
     }
 
     fun skipToNext() = playerHolder.currentPlayer.seekToNextMediaItem()
@@ -141,7 +183,7 @@ class PlayerViewModel @Inject constructor(
     }
 
     override fun onCleared() {
-        playerHolder.currentPlayer.removeListener(playerListener)
+        lastPlayer?.removeListener(playerListener)
         progressJob?.cancel()
         super.onCleared()
     }

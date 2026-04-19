@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.musicplayer.data.repository.MusicRepository
 import com.musicplayer.domain.model.Track
+import com.musicplayer.service.PlayerHolder
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.FlowPreview
@@ -19,23 +20,49 @@ data class SearchUiState(
 @OptIn(FlowPreview::class, ExperimentalCoroutinesApi::class)
 @HiltViewModel
 class SearchViewModel @Inject constructor(
-    private val repository: MusicRepository
+    private val repository: MusicRepository,
+    private val playerHolder: PlayerHolder
 ) : ViewModel() {
 
     private val _query = MutableStateFlow("")
 
-    val uiState: StateFlow<SearchUiState> = _query
+    private val _isLoading = MutableStateFlow(false)
+    val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
+
+    private val _searchResults = _query
         .debounce(300)
         .distinctUntilChanged()
         .flatMapLatest { q ->
-            if (q.isBlank()) flowOf(SearchUiState())
-            else repository.searchTracks(q).map { tracks ->
-                SearchUiState(query = q, results = tracks)
+            if (q.isBlank()) {
+                _isLoading.value = false
+                flowOf(emptyList<Track>())
+            } else {
+                repository.searchTracks(q)
+                    .onStart { _isLoading.value = true }
+                    .onEach { _isLoading.value = false }
             }
         }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), SearchUiState())
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
-    fun updateQuery(query: String) {
-        _query.value = query
+    val uiState: StateFlow<SearchUiState> = combine(
+        _query,
+        _searchResults,
+        _isLoading
+    ) { query, results, loading ->
+        SearchUiState(
+            query = query,
+            results = results,
+            isLoading = loading
+        )
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), SearchUiState())
+
+    fun updateQuery(newQuery: String) {
+        _query.value = newQuery
+    }
+
+    fun playTrack(track: Track) {
+        val results = _searchResults.value
+        val index = results.indexOf(track).coerceAtLeast(0)
+        playerHolder.playTracks(results, index)
     }
 }

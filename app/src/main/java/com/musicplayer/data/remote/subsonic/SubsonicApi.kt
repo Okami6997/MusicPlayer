@@ -41,6 +41,17 @@ interface SubsonicApi {
         @Query("f") format: String = "json"
     ): SubsonicResponse<AlbumListResult>
 
+    @GET("rest/getArtist")
+    suspend fun getArtist(
+        @Query("id") artistId: String,
+        @Query("u") username: String,
+        @Query("t") token: String,
+        @Query("s") salt: String,
+        @Query("v") version: String = "1.16.1",
+        @Query("c") client: String = "MusicPlayer",
+        @Query("f") format: String = "json"
+    ): SubsonicResponse<ArtistResultDetails>
+
     @GET("rest/getAlbum")
     suspend fun getAlbum(
         @Query("id") albumId: String,
@@ -76,6 +87,27 @@ interface SubsonicApi {
         @Query("f") format: String = "json"
     ): SubsonicResponse<PlaylistsResult>
 
+    @GET("rest/getMusicFolders")
+    suspend fun getMusicFolders(
+        @Query("u") username: String,
+        @Query("t") token: String,
+        @Query("s") salt: String,
+        @Query("v") version: String = "1.16.1",
+        @Query("c") client: String = "MusicPlayer",
+        @Query("f") format: String = "json"
+    ): SubsonicResponse<MusicFoldersResult>
+
+    @GET("rest/getMusicDirectory")
+    suspend fun getMusicDirectory(
+        @Query("id") id: String,
+        @Query("u") username: String,
+        @Query("t") token: String,
+        @Query("s") salt: String,
+        @Query("v") version: String = "1.16.1",
+        @Query("c") client: String = "MusicPlayer",
+        @Query("f") format: String = "json"
+    ): SubsonicResponse<MusicDirectoryResult>
+
     @GET("rest/getPlaylist")
     suspend fun getPlaylist(
         @Query("id") playlistId: String,
@@ -86,6 +118,59 @@ interface SubsonicApi {
         @Query("c") client: String = "MusicPlayer",
         @Query("f") format: String = "json"
     ): SubsonicResponse<PlaylistResult>
+
+    @GET("rest/getRandomSongs")
+    suspend fun getRandomSongs(
+        @Query("u") username: String,
+        @Query("t") token: String,
+        @Query("s") salt: String,
+        @Query("size") size: Int = 500,
+        @Query("v") version: String = "1.16.1",
+        @Query("c") client: String = "MusicPlayer",
+        @Query("f") format: String = "json"
+    ): SubsonicResponse<RandomSongsResult>
+
+    @GET("rest/getStarred")
+    suspend fun getStarred(
+        @Query("u") username: String,
+        @Query("t") token: String,
+        @Query("s") salt: String,
+        @Query("v") version: String = "1.16.1",
+        @Query("c") client: String = "MusicPlayer",
+        @Query("f") format: String = "json"
+    ): SubsonicResponse<SearchResult3>
+
+    @GET("rest/getGenres")
+    suspend fun getGenres(
+        @Query("u") username: String,
+        @Query("t") token: String,
+        @Query("s") salt: String,
+        @Query("v") version: String = "1.16.1",
+        @Query("c") client: String = "MusicPlayer",
+        @Query("f") format: String = "json"
+    ): SubsonicResponse<GenresResult>
+
+    @GET("rest/getSongsByGenre")
+    suspend fun getSongsByGenre(
+        @Query("genre") genre: String,
+        @Query("u") username: String,
+        @Query("t") token: String,
+        @Query("s") salt: String,
+        @Query("count") count: Int = 500,
+        @Query("v") version: String = "1.16.1",
+        @Query("c") client: String = "MusicPlayer",
+        @Query("f") format: String = "json"
+    ): SubsonicResponse<SongsByGenreResult>
+
+    @GET("rest/getIndexes")
+    suspend fun getIndexes(
+        @Query("u") username: String,
+        @Query("t") token: String,
+        @Query("s") salt: String,
+        @Query("v") version: String = "1.16.1",
+        @Query("c") client: String = "MusicPlayer",
+        @Query("f") format: String = "json"
+    ): SubsonicResponse<IndexesResult>
 
     @GET("rest/stream")
     suspend fun getStreamUrl(

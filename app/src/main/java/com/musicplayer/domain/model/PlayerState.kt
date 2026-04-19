@@ -27,6 +27,7 @@ enum class RepeatMode {
 data class PlayerUiState(
     val currentTrack: Track? = null,
     val playerState: PlayerState = PlayerState.IDLE,
+    val playWhenReady: Boolean = false,
     val currentPositionMs: Long = 0L,
     val durationMs: Long = 0L,
     val isShuffleEnabled: Boolean = false,

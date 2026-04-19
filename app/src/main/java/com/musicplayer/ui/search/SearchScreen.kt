@@ -13,6 +13,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.text.TextRange
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.musicplayer.ui.components.TrackListItem
@@ -26,6 +28,26 @@ fun SearchScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val focusRequester = remember { FocusRequester() }
+    
+    // Internal state to manage the TextField synchronously and maintain cursor position
+    var textFieldValue by remember {
+        mutableStateOf(
+            TextFieldValue(
+                text = uiState.query,
+                selection = TextRange(uiState.query.length)
+            )
+        )
+    }
+
+    // Sync from VM (e.g. for Clear action or external updates)
+    LaunchedEffect(uiState.query) {
+        if (uiState.query != textFieldValue.text) {
+            textFieldValue = textFieldValue.copy(
+                text = uiState.query,
+                selection = TextRange(uiState.query.length)
+            )
+        }
+    }
 
     LaunchedEffect(Unit) {
         focusRequester.requestFocus()
@@ -36,8 +58,11 @@ fun SearchScreen(
             TopAppBar(
                 title = {
                     TextField(
-                        value = uiState.query,
-                        onValueChange = { viewModel.updateQuery(it) },
+                        value = textFieldValue,
+                        onValueChange = {
+                            textFieldValue = it
+                            viewModel.updateQuery(it.text)
+                        },
                         placeholder = { Text("Search tracks, artists, albums…") },
                         singleLine = true,
                         colors = TextFieldDefaults.colors(
@@ -45,7 +70,7 @@ fun SearchScreen(
                             unfocusedContainerColor = MaterialTheme.colorScheme.surface
                         ),
                         trailingIcon = {
-                            if (uiState.query.isNotEmpty()) {
+                            if (textFieldValue.text.isNotEmpty()) {
                                 IconButton(onClick = { viewModel.updateQuery("") }) {
                                     Icon(Icons.Default.Clear, contentDescription = "Clear")
                                 }
@@ -69,7 +94,7 @@ fun SearchScreen(
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     CircularProgressIndicator()
                 }
-            } else if (uiState.query.isEmpty()) {
+            } else if (textFieldValue.text.isEmpty()) {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Icon(Icons.Default.Search, contentDescription = null, modifier = Modifier.size(64.dp),
@@ -80,12 +105,15 @@ fun SearchScreen(
                 }
             } else if (uiState.results.isEmpty()) {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Text("No results for \"${uiState.query}\"")
+                    Text("No results for \"${textFieldValue.text}\"")
                 }
             } else {
                 LazyColumn {
                     items(uiState.results) { track ->
-                        TrackListItem(track = track, onClick = { onNavigateToPlayer() })
+                        TrackListItem(track = track, onClick = {
+                            viewModel.playTrack(track)
+                            onNavigateToPlayer()
+                        })
                     }
                 }
             }

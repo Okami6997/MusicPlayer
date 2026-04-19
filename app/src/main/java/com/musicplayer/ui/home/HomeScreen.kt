@@ -18,6 +18,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.musicplayer.domain.model.Track
 import com.musicplayer.ui.components.TrackListItem
 import com.musicplayer.ui.components.MiniPlayer
+import com.musicplayer.ui.player.PlayerViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -26,9 +27,11 @@ fun HomeScreen(
     onNavigateToLibrary: () -> Unit,
     onNavigateToSearch: () -> Unit,
     onNavigateToSettings: () -> Unit,
-    viewModel: HomeViewModel = hiltViewModel()
+    viewModel: HomeViewModel = hiltViewModel(),
+    playerViewModel: PlayerViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val playerUiState by playerViewModel.uiState.collectAsState()
 
     Scaffold(
         topBar = {
@@ -89,7 +92,10 @@ fun HomeScreen(
                     items(uiState.recentTracks) { track ->
                         TrackListItem(
                             track = track,
-                            onClick = { onNavigateToPlayer() }
+                            onClick = {
+                                viewModel.playTrack(track)
+                                onNavigateToPlayer()
+                            }
                         )
                     }
                     if (uiState.recentTracks.isEmpty()) {
@@ -125,6 +131,13 @@ fun HomeScreen(
                         }
                     }
                 }
+
+                MiniPlayer(
+                    uiState = playerUiState,
+                    onExpand = onNavigateToPlayer,
+                    onPlayPause = { playerViewModel.togglePlayPause() },
+                    onSkipNext = { playerViewModel.skipToNext() }
+                )
             }
         }
     }

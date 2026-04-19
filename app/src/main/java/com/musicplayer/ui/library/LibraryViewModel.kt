@@ -7,6 +7,7 @@ import com.musicplayer.domain.model.Album
 import com.musicplayer.domain.model.Artist
 import com.musicplayer.domain.model.Playlist
 import com.musicplayer.domain.model.Track
+import com.musicplayer.service.PlayerHolder
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
 import javax.inject.Inject
@@ -21,7 +22,8 @@ data class LibraryUiState(
 
 @HiltViewModel
 class LibraryViewModel @Inject constructor(
-    private val repository: MusicRepository
+    private val repository: MusicRepository,
+    private val playerHolder: PlayerHolder
 ) : ViewModel() {
 
     val uiState: StateFlow<LibraryUiState> = repository.getAllTracks()
@@ -64,4 +66,10 @@ class LibraryViewModel @Inject constructor(
             )
         }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), LibraryUiState())
+
+    fun playTrack(track: Track) {
+        val tracks = uiState.value.tracks
+        val index = tracks.indexOf(track).coerceAtLeast(0)
+        playerHolder.playTracks(tracks, index)
+    }
 }

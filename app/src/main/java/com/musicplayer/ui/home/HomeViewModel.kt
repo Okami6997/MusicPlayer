@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.musicplayer.data.repository.MusicRepository
 import com.musicplayer.domain.model.Track
+import com.musicplayer.service.PlayerHolder
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -20,7 +21,8 @@ data class HomeUiState(
 
 @HiltViewModel
 class HomeViewModel @Inject constructor(
-    private val repository: MusicRepository
+    private val repository: MusicRepository,
+    private val playerHolder: PlayerHolder
 ) : ViewModel() {
 
     val uiState: StateFlow<HomeUiState> = MutableStateFlow(HomeUiState()).also { state ->
@@ -33,6 +35,12 @@ class HomeViewModel @Inject constructor(
             }
         }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), HomeUiState(isLoading = true))
+
+    fun playTrack(track: Track) {
+        val tracks = uiState.value.recentTracks
+        val index = tracks.indexOf(track).coerceAtLeast(0)
+        playerHolder.playTracks(tracks, index)
+    }
 
     fun refreshLocalLibrary() {
         viewModelScope.launch {

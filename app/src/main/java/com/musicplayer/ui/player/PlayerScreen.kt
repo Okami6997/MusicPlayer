@@ -145,9 +145,9 @@ fun PlayerScreen(
                     modifier = Modifier.size(64.dp)
                 ) {
                     Icon(
-                        imageVector = if (uiState.playerState == PlayerState.PLAYING)
+                        imageVector = if (uiState.playWhenReady && uiState.playerState != PlayerState.STOPPED)
                             Icons.Default.Pause else Icons.Default.PlayArrow,
-                        contentDescription = if (uiState.playerState == PlayerState.PLAYING) "Pause" else "Play",
+                        contentDescription = if (uiState.playWhenReady) "Pause" else "Play",
                         modifier = Modifier.size(32.dp)
                     )
                 }

@@ -51,7 +51,10 @@ fun LibraryScreen(
                 0 -> {
                     LazyColumn {
                         items(uiState.tracks) { track ->
-                            TrackListItem(track = track, onClick = { onNavigateToPlayer() })
+                            TrackListItem(track = track, onClick = {
+                                viewModel.playTrack(track)
+                                onNavigateToPlayer()
+                            })
                         }
                     }
                 }
