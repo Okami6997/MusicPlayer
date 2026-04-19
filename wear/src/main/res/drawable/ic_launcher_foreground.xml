@@ -3,7 +3,8 @@
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
+    <!-- Music note (eighth note) -->
     <path
-        android:fillColor="#FFFFFF"
-        android:pathData="M47,66.5v-25l18,12.5L47,66.5z" />
+        android:fillColor="#0818A8"
+        android:pathData="M54,27v31.65c-1.77,-1.02,-3.81,-1.65,-6,-1.65C41.37,57,36,62.37,36,69s5.37,12,12,12s12,-5.37,12,-12V39h12V27H54z" />
 </vector>
