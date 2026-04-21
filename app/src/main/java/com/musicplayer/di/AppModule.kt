@@ -2,6 +2,7 @@ package com.musicplayer.di
 
 import android.content.Context
 import androidx.room.Room
+import coil.ImageLoader
 import com.musicplayer.data.local.MediaSourceDao
 import com.musicplayer.data.local.MusicDatabase
 import com.musicplayer.data.local.PlaylistDao
@@ -35,6 +36,11 @@ object AppModule {
 
     @Provides
     fun providePlaylistDao(db: MusicDatabase): PlaylistDao = db.playlistDao()
+
+    @Provides
+    @Singleton
+    fun provideImageLoader(@ApplicationContext context: Context): ImageLoader =
+        ImageLoader.Builder(context).build()
 
     @Provides
     @Singleton

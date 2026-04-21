@@ -131,6 +131,8 @@ private fun PlayerContent(
         Spacer(modifier = Modifier.height(16.dp))
 
         // Album artwork or lyrics view – tap to toggle
+        val showLyrics = uiState.showLyrics && uiState.lyrics != null
+        
         val artModifier = Modifier
             .size(280.dp)
             .clip(MaterialTheme.shapes.large)
@@ -140,11 +142,16 @@ private fun PlayerContent(
                 else Modifier
             )
 
-        if (uiState.showLyrics && uiState.lyrics != null) {
+        if (showLyrics) {
             LyricsView(
                 lyrics = uiState.lyrics!!,
                 currentLineIndex = uiState.currentLyricsLineIndex,
-                modifier = artModifier
+                onLineClick = { timeMs -> viewModel.seekTo(timeMs) },
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxWidth()
+                    .clip(MaterialTheme.shapes.large)
+                    .clickable { viewModel.toggleLyrics() }
             )
         } else {
             AsyncImage(
@@ -153,34 +160,34 @@ private fun PlayerContent(
                 modifier = artModifier,
                 contentScale = ContentScale.Crop
             )
+            
+            Spacer(modifier = Modifier.height(32.dp))
+
+            // Track info
+            Text(
+                text = track?.title ?: "No track selected",
+                style = MaterialTheme.typography.headlineMedium,
+                fontWeight = FontWeight.Bold,
+                textAlign = TextAlign.Center,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis
+            )
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = track?.artist ?: "",
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            Text(
+                text = track?.album ?: "",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
         }
-
-        Spacer(modifier = Modifier.height(32.dp))
-
-        // Track info
-        Text(
-            text = track?.title ?: "No track selected",
-            style = MaterialTheme.typography.headlineMedium,
-            fontWeight = FontWeight.Bold,
-            textAlign = TextAlign.Center,
-            maxLines = 2,
-            overflow = TextOverflow.Ellipsis
-        )
-        Spacer(modifier = Modifier.height(4.dp))
-        Text(
-            text = track?.artist ?: "",
-            style = MaterialTheme.typography.titleMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis
-        )
-        Text(
-            text = track?.album ?: "",
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis
-        )
 
         Spacer(modifier = Modifier.height(24.dp))
 
@@ -289,6 +296,7 @@ private fun Long.toTimeString(): String {
 private fun LyricsView(
     lyrics: Lyrics,
     currentLineIndex: Int,
+    onLineClick: (Long) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val listState = rememberLazyListState()
@@ -331,7 +339,10 @@ private fun LyricsView(
                     textAlign = TextAlign.Center,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(vertical = 4.dp)
+                        .clickable(enabled = lyrics.isSynced && line.timeMs >= 0) {
+                            onLineClick(line.timeMs)
+                        }
+                        .padding(vertical = 8.dp)
                 )
             }
         }

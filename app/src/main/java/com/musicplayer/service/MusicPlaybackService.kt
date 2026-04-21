@@ -1,11 +1,13 @@
 package com.musicplayer.service
 
+import android.app.NotificationChannel
+import android.app.NotificationManager
 import android.app.PendingIntent
+import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
-import androidx.media3.session.DefaultMediaNotificationProvider
 import androidx.media3.session.MediaSession
 import androidx.media3.session.MediaSessionService
 import com.google.common.util.concurrent.ListenableFuture
@@ -52,11 +54,21 @@ class MusicPlaybackService : MediaSessionService() {
     @Inject
     lateinit var queueRepository: QueueRepository
 
+    @Inject
+    lateinit var notificationProvider: MediaStyleNotificationProvider
+
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private var mediaSession: MediaSession? = null
 
+    companion object {
+        private const val NOTIFICATION_CHANNEL_ID = "music_playback_v4"
+    }
+
     override fun onCreate() {
         super.onCreate()
+
+        createNotificationChannel()
+        setMediaNotificationProvider(notificationProvider)
 
         val sessionActivityPendingIntent = PendingIntent.getActivity(
             this,
@@ -69,11 +81,6 @@ class MusicPlaybackService : MediaSessionService() {
             .setSessionActivity(sessionActivityPendingIntent)
             .setCallback(SessionCallback())
             .build()
-
-        setMediaNotificationProvider(
-            DefaultMediaNotificationProvider.Builder(this)
-                .build()
-        )
 
         serviceScope.launch {
             playerHolder.currentPlayerFlow.collect { newPlayer ->
@@ -115,6 +122,23 @@ class MusicPlaybackService : MediaSessionService() {
         serviceScope.cancel()
         super.onDestroy()
         Timber.d("MusicPlaybackService destroyed")
+    }
+
+    private fun createNotificationChannel() {
+        val channel = NotificationChannel(
+            NOTIFICATION_CHANNEL_ID,
+            "Music Playback",
+            NotificationManager.IMPORTANCE_HIGH
+        ).apply {
+            description = "Music playback controls and now playing info"
+            setShowBadge(false)
+            lockscreenVisibility = android.app.Notification.VISIBILITY_PUBLIC
+            setSound(null, null)
+            enableVibration(false)
+            enableLights(true)
+        }
+        val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        notificationManager.createNotificationChannel(channel)
     }
 
     private inner class SessionCallback : MediaSession.Callback {

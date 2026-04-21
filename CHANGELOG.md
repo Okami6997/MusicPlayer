@@ -18,6 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Search screen with real-time debounced search
   - Settings screen (dynamic color, gapless playback toggles)
   - Music Sources management screen (add / delete NAS & local sources)
+- Custom `MediaNotification.Provider` implementation for MusicPlaybackService to support Samsung notification placement and live MediaStyle updates
 - **Media back-ends**
   - Local MediaStore scanner (all audio files on device)
   - Subsonic / OpenSubsonic / Navidrome client (token-based MD5 auth)
@@ -46,6 +47,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-## [1.0.0] - TBD
+## [0.0.2] - TBD
 
-_First public release — pending Play Store submission._
+_Planned release for v0.0.2; current development version is 0.0.1._
