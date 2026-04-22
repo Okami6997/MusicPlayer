@@ -5,6 +5,7 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navDeepLink
 import com.musicplayer.ui.home.HomeScreen
 import com.musicplayer.ui.library.LibraryScreen
 import com.musicplayer.ui.player.PlayerScreen
@@ -51,7 +52,10 @@ fun MusicPlayerNavGraph(
                 onNavigateBack = { navController.popBackStack() }
             )
         }
-        composable(Screen.Player.route) {
+        composable(
+            route = Screen.Player.route,
+            deepLinks = listOf(navDeepLink { uriPattern = "musicplayer://player" })
+        ) {
             PlayerScreen(
                 onNavigateBack = { navController.popBackStack() }
             )

@@ -63,7 +63,7 @@ UI Layer          →  ViewModel  →  Repository  →  Data Sources
 | `data/remote/subsonic` | Retrofit API + models + client for Subsonic / OpenSubsonic / Navidrome |
 | `data/remote/jellyfin` | Retrofit client for Jellyfin and Emby |
 | `data/repository` | MusicRepository — aggregates all sources, persists to Room |
-| `service` | MusicPlaybackService (MediaSessionService), PlayerHolder (ExoPlayer ↔ CastPlayer switch), custom MediaStyle notification provider for Samsung media output behavior |
+| `service` | MusicPlaybackService (MediaSessionService), PlayerHolder (ExoPlayer ↔ CastPlayer switch), Media3 notification provider integration for Samsung notification placement and stable playback notification visibility |
 | `cast` | CastOptionsProvider — configures Google Cast receiver |
 | `di` | Hilt modules: AppModule (DB, OkHttp), DataStoreModule |
 | `ui/navigation` | NavGraph, Screen sealed class |

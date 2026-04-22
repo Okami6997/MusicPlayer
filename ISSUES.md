@@ -15,7 +15,7 @@ For individual bug reports please open a [GitHub Issue](../../issues).
 | 4 | `wear` | Wear OS UI is a placeholder stub; playback controls are not connected to the phone session | Use phone app |
 | 5 | `tv` | TV module uses placeholder content; library browsing not yet wired to the shared database | Use phone app |
 | 6 | `auto` | Android Auto CarApp screen items are static placeholders | Use phone app |
-| 7 | `app` | Samsung devices may place the player in the media output card instead of the main notification list; custom MediaStyle notification provider work is in progress | Continue validating on target devices |
+| 7 | `app` | Samsung/media output notification visibility may be inconsistent when other media players are active | Verified improvement in v0.0.2 using Media3 notification provider and startup foreground notification |
 
 ---
 

@@ -114,22 +114,28 @@ class MusicPlaybackService : MediaLibraryService() {
         super.onCreate()
 
         createNotificationChannel()
-        notificationProvider = DefaultMediaNotificationProvider.Builder(this)
-            .setChannelId(NOTIFICATION_CHANNEL_ID)
-            .build()
-        setMediaNotificationProvider(notificationProvider)
-        showBootstrapNotification()
 
         val sessionActivityPendingIntent = PendingIntent.getActivity(
             this,
             0,
-            Intent(this, MainActivity::class.java),
+            Intent(Intent.ACTION_VIEW, Uri.parse("musicplayer://player")).apply {
+                setClass(this@MusicPlaybackService, MainActivity::class.java)
+            },
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
         )
+
+        notificationProvider = DefaultMediaNotificationProvider.Builder(this)
+            .setChannelId(NOTIFICATION_CHANNEL_ID)
+            .setNotificationId(NOTIFICATION_ID)
+            .build()
+        setMediaNotificationProvider(notificationProvider)
+
+        showBootstrapNotification(sessionActivityPendingIntent)
 
         mediaSession = MediaLibraryService.MediaLibrarySession.Builder(this, playerHolder.currentPlayer, SessionCallback())
             .setSessionActivity(sessionActivityPendingIntent)
             .build()
+        mediaSession?.let { addSession(it) }
 
         // Update custom layout with action buttons
         mediaSession?.setCustomLayout(getCustomLayout())
@@ -163,11 +169,12 @@ class MusicPlaybackService : MediaLibraryService() {
         manager.createNotificationChannel(channel)
     }
 
-    private fun showBootstrapNotification() {
+    private fun showBootstrapNotification(pendingIntent: PendingIntent) {
         val notification = NotificationCompat.Builder(this, NOTIFICATION_CHANNEL_ID)
             .setSmallIcon(android.R.drawable.ic_media_play)
             .setContentTitle(getString(com.musicplayer.R.string.app_name))
             .setContentText("Playback service is ready")
+            .setContentIntent(pendingIntent)
             .setCategory(NotificationCompat.CATEGORY_SERVICE)
             .setPriority(NotificationCompat.PRIORITY_LOW)
             .setOngoing(true)
@@ -201,7 +208,6 @@ class MusicPlaybackService : MediaLibraryService() {
         Timber.d("MusicPlaybackService onDestroy")
         playerHolder.saveCurrentPosition()
         mediaSession?.run {
-            player.release()
             release()
             mediaSession = null
         }
@@ -221,6 +227,11 @@ class MusicPlaybackService : MediaLibraryService() {
             stop()
         }
         stopSelf()
+    }
+
+    private fun toggleSleepTimer() {
+        // TODO: Implement sleep timer logic
+        Timber.i("Sleep timer toggled (not yet implemented)")
     }
 
     private inner class SessionCallback : MediaLibrarySession.Callback {
@@ -398,10 +409,12 @@ class MusicPlaybackService : MediaLibraryService() {
                 .build(),
             CommandButton.Builder()
                 .setSessionCommand(CustomCommands.TOGGLE_SLEEP_TIMER.sessionCommand)
+                .setIconResId(android.R.drawable.ic_menu_agenda)
                 .setDisplayName("Sleep Timer")
                 .build(),
             CommandButton.Builder()
                 .setSessionCommand(CustomCommands.CLOSE_PLAYER.sessionCommand)
+                .setIconResId(android.R.drawable.ic_menu_close_clear_cancel)
                 .setDisplayName("Close")
                 .build()
         )
