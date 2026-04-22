@@ -8,6 +8,8 @@ import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
 import androidx.core.app.NotificationCompat
+import androidx.annotation.OptIn
+import androidx.media3.common.util.UnstableApi
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
 import androidx.media3.common.Player
@@ -64,7 +66,7 @@ enum class CustomCommands(val customAction: String) {
         get() = SessionCommand(customAction, Bundle.EMPTY)
 
     companion object {
-        private val values = values()
+        private val values = entries
         fun fromSessionCommand(command: SessionCommand): CustomCommands? =
             values.find { it.customAction == command.customAction }
     }
@@ -73,6 +75,7 @@ enum class CustomCommands(val customAction: String) {
 /**
  * Long-running foreground service that owns the [MediaLibrarySession].
  */
+@OptIn(UnstableApi::class)
 @AndroidEntryPoint
 class MusicPlaybackService : MediaLibraryService() {
 
@@ -227,11 +230,18 @@ class MusicPlaybackService : MediaLibraryService() {
             controller: MediaSession.ControllerInfo
         ): MediaSession.ConnectionResult {
             val result = super.onConnect(session, controller)
-            val builder = result.availableSessionCommands.buildUpon()
-            CustomCommands.values().forEach { builder.add(it.sessionCommand) }
+            val sessionCommands = result.availableSessionCommands.buildUpon()
+            CustomCommands.entries.forEach { sessionCommands.add(it.sessionCommand) }
+
+            // Ensure player commands like Shuffle and Repeat are available to the controller/notification
+            val playerCommands = result.availablePlayerCommands.buildUpon()
+                .add(Player.COMMAND_SET_SHUFFLE_MODE)
+                .add(Player.COMMAND_SET_REPEAT_MODE)
+                .build()
+
             return MediaSession.ConnectionResult.AcceptedResultBuilder(session)
-                .setAvailableSessionCommands(builder.build())
-                .setAvailablePlayerCommands(result.availablePlayerCommands)
+                .setAvailableSessionCommands(sessionCommands.build())
+                .setAvailablePlayerCommands(playerCommands)
                 .build()
         }
 
@@ -376,6 +386,16 @@ class MusicPlaybackService : MediaLibraryService() {
 
     private fun getCustomLayout(): ImmutableList<CommandButton> {
         return ImmutableList.of(
+            CommandButton.Builder()
+                .setPlayerCommand(Player.COMMAND_SET_SHUFFLE_MODE)
+                .setIconResId(android.R.drawable.ic_menu_directions) // Placeholder icon
+                .setDisplayName("Shuffle")
+                .build(),
+            CommandButton.Builder()
+                .setPlayerCommand(Player.COMMAND_SET_REPEAT_MODE)
+                .setIconResId(android.R.drawable.ic_menu_revert) // Placeholder icon
+                .setDisplayName("Repeat")
+                .build(),
             CommandButton.Builder()
                 .setSessionCommand(CustomCommands.TOGGLE_SLEEP_TIMER.sessionCommand)
                 .setDisplayName("Sleep Timer")
