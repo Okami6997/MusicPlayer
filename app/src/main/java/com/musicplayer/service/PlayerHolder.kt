@@ -3,11 +3,11 @@ package com.musicplayer.service
 import android.content.Context
 import android.content.Intent
 import android.net.ConnectivityManager
-import android.net.wifi.WifiManager
 import android.net.Network
 import android.net.NetworkCapabilities
 import android.net.NetworkRequest
 import android.net.Uri
+import android.net.wifi.WifiManager
 import androidx.media3.cast.CastPlayer
 import androidx.media3.cast.SessionAvailabilityListener
 import androidx.media3.common.AudioAttributes
@@ -124,6 +124,13 @@ class PlayerHolder @Inject constructor(
         }
 
     /**
+     * Executes the given [action] on the player's application thread.
+     */
+    fun withPlayer(action: Player.() -> Unit) {
+        currentPlayer.runOnPlayerThread(action)
+    }
+
+    /**
      * Restores queue state in the holder (e.g. after [onPlaybackResumption]) without
      * touching the player — Media3 will set the items on the player itself.
      */
@@ -154,9 +161,11 @@ class PlayerHolder @Inject constructor(
                 )
                 .build()
         }
-        currentPlayer.setMediaItems(mediaItems, startIndex, 0)
-        currentPlayer.prepare()
-        currentPlayer.play()
+        withPlayer {
+            setMediaItems(mediaItems, startIndex, 0)
+            prepare()
+            play()
+        }
     }
 
     init {
@@ -203,54 +212,60 @@ class PlayerHolder @Inject constructor(
 
     private fun switchToPlayer(newPlayer: Player) {
         if (newPlayer == currentPlayer) return
-        val playWhenReady = currentPlayer.playWhenReady
-        val currentMediaItemIndex = currentPlayer.currentMediaItemIndex
-        val currentPosition = currentPlayer.currentPosition
+        
+        val oldPlayer = currentPlayer
+        val playWhenReady = oldPlayer.playWhenReady
+        val currentMediaItemIndex = oldPlayer.currentMediaItemIndex
+        val currentPosition = oldPlayer.currentPosition
 
         val mediaItems = mutableListOf<MediaItem>()
-        for (i in 0 until currentPlayer.mediaItemCount) {
-            mediaItems.add(currentPlayer.getMediaItemAt(i))
+        for (i in 0 until oldPlayer.mediaItemCount) {
+            mediaItems.add(oldPlayer.getMediaItemAt(i))
         }
 
-        currentPlayer.stop()
-        currentPlayer.clearMediaItems()
+        oldPlayer.stop()
+        oldPlayer.clearMediaItems()
 
-        newPlayer.setMediaItems(mediaItems)
-        newPlayer.playWhenReady = playWhenReady
-        newPlayer.prepare()
-        newPlayer.seekTo(currentMediaItemIndex, currentPosition)
+        newPlayer.runOnPlayerThread {
+            setMediaItems(mediaItems)
+            this.playWhenReady = playWhenReady
+            prepare()
+            seekTo(currentMediaItemIndex, currentPosition)
+        }
 
         currentPlayer = newPlayer
         Timber.d("Switched to ${if (newPlayer is CastPlayer) "CastPlayer" else "ExoPlayer"}")
     }
 
     private fun retryPlayback() {
-        val player = currentPlayer
-        val currentIndex = player.currentMediaItemIndex
-        val mediaItems = mutableListOf<MediaItem>()
-        for (i in 0 until player.mediaItemCount) {
-            mediaItems.add(player.getMediaItemAt(i))
-        }
+        withPlayer {
+            val currentIndex = currentMediaItemIndex
+            val mediaItems = mutableListOf<MediaItem>()
+            for (i in 0 until mediaItemCount) {
+                mediaItems.add(getMediaItemAt(i))
+            }
 
-        if (mediaItems.isEmpty()) {
-            Timber.w("No media items to retry")
-            return
-        }
+            if (mediaItems.isEmpty()) {
+                Timber.w("No media items to retry")
+                return@withPlayer
+            }
 
-        Timber.d("Retrying playback at index $currentIndex")
-        player.stop()
-        player.clearMediaItems()
-        player.setMediaItems(mediaItems, currentIndex, 0)
-        player.prepare()
-        player.play()
+            Timber.d("Retrying playback at index $currentIndex")
+            stop()
+            clearMediaItems()
+            setMediaItems(mediaItems, currentIndex, 0)
+            prepare()
+            play()
+        }
     }
 
     fun saveCurrentPosition() {
-        val player = currentPlayer
-        val idx = player.currentMediaItemIndex
-        val posMs = player.currentPosition
-        if (_queue.value.isNotEmpty()) {
-            scope.launch { queueRepository.saveQueueState(_queue.value, idx, posMs) }
+        withPlayer {
+            val idx = currentMediaItemIndex
+            val posMs = currentPosition
+            if (_queue.value.isNotEmpty()) {
+                scope.launch { queueRepository.saveQueueState(_queue.value, idx, posMs) }
+            }
         }
     }
 
@@ -258,8 +273,8 @@ class PlayerHolder @Inject constructor(
         if (wifiLock.isHeld) wifiLock.release()
         connectivityManager.unregisterNetworkCallback(networkCallback)
         castPlayer?.setSessionAvailabilityListener(null)
-        castPlayer?.release()
-        exoPlayer.release()
+        castPlayer?.runOnPlayerThread { release() }
+        exoPlayer.runOnPlayerThread { release() }
         scope.cancel()
     }
 }

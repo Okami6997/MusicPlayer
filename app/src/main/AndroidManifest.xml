@@ -68,29 +68,16 @@
             android:exported="true"
             android:foregroundServiceType="mediaPlayback">
             <intent-filter>
+                <action android:name="androidx.media3.session.MediaLibraryService" />
                 <action android:name="androidx.media3.session.MediaSessionService" />
                 <action android:name="android.media.browse.MediaBrowserService" />
             </intent-filter>
         </service>
 
-        <!-- Notification action receiver for MediaStyle notification controls -->
-        <receiver
-            android:name="com.musicplayer.service.NotificationActionReceiver"
-            android:exported="false">
-            <intent-filter>
-                <action android:name="com.musicplayer.ACTION_PAUSE" />
-                <action android:name="com.musicplayer.ACTION_PLAY" />
-                <action android:name="com.musicplayer.ACTION_PREVIOUS" />
-                <action android:name="com.musicplayer.ACTION_NEXT" />
-                <action android:name="com.musicplayer.ACTION_STOP" />
-                <action android:name="com.musicplayer.ACTION_DISMISS" />
-            </intent-filter>
-        </receiver>
-
         <!-- Cast options provider for Chromecast -->
         <meta-data
             android:name="com.google.android.gms.cast.framework.OPTIONS_PROVIDER_CLASS_NAME"
-            android:value=".cast.CastOptionsProvider" />
+            android:value="com.musicplayer.cast.CastOptionsProvider" />
 
         <!-- Media button receiver for headphone/Bluetooth controls -->
         <receiver
