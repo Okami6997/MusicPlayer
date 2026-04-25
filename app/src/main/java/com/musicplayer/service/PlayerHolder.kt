@@ -22,6 +22,7 @@ import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import com.google.android.gms.cast.framework.CastContext
 import com.musicplayer.data.repository.QueueRepository
 import com.musicplayer.domain.model.Track
+import com.musicplayer.ui.settings.SettingsKeys
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -29,12 +30,16 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import timber.log.Timber
 import javax.inject.Inject
 import javax.inject.Singleton
+import androidx.datastore.core.DataStore
+import androidx.datastore.preferences.core.Preferences
 
 /**
  * Manages the active [Player] instance, switching between [ExoPlayer] (local/network)
@@ -46,6 +51,8 @@ class PlayerHolder @Inject constructor(
     @ApplicationContext private val context: Context,
     private val queueRepository: QueueRepository,
     private val okHttpClient: OkHttpClient,
+    private val dataStore: DataStore<Preferences>,
+    private val equalizerManager: EqualizerManager,
 ) : SessionAvailabilityListener {
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
@@ -77,6 +84,10 @@ class PlayerHolder @Inject constructor(
                 }
             }
         }
+
+        override fun onAudioSessionIdChanged(audioSessionId: Int) {
+            equalizerManager.onAudioSessionIdChanged(audioSessionId)
+        }
     }
 
     private fun createExoPlayer(): ExoPlayer {
@@ -100,6 +111,15 @@ class PlayerHolder @Inject constructor(
             .build()
         
         player.addListener(exoPlayerListener)
+        
+        // Initial gapless/skip silence setting
+        scope.launch {
+            val enabled = dataStore.data.map { it[SettingsKeys.GAPLESS_PLAYBACK] ?: true }.first()
+            withContext(Dispatchers.Main) {
+                player.skipSilenceEnabled = enabled
+            }
+        }
+
         _exoPlayer = player
         return player
     }
@@ -226,6 +246,15 @@ class PlayerHolder @Inject constructor(
             .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
             .build()
         connectivityManager.registerNetworkCallback(request, networkCallback)
+
+        scope.launch {
+            dataStore.data.map { it[SettingsKeys.GAPLESS_PLAYBACK] ?: true }
+                .collect { enabled ->
+                    withContext(Dispatchers.Main) {
+                        _exoPlayer?.skipSilenceEnabled = enabled
+                    }
+                }
+        }
     }
 
     override fun onCastSessionAvailable() {
@@ -304,6 +333,7 @@ class PlayerHolder @Inject constructor(
 
     fun release() {
         if (wifiLock.isHeld) wifiLock.release()
+        equalizerManager.release()
         
         synchronized(this) {
             val oldExo = _exoPlayer

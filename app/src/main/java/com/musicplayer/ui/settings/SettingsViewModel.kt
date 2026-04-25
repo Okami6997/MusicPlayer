@@ -2,7 +2,6 @@ package com.musicplayer.ui.settings
 
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
-import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -13,6 +12,7 @@ import javax.inject.Inject
 
 data class SettingsUiState(
     val dynamicColorEnabled: Boolean = true,
+    val themeMode: String = "system",
     val gaplessPlayback: Boolean = true,
     val crossfadeDurationMs: Int = 0
 )
@@ -22,29 +22,39 @@ class SettingsViewModel @Inject constructor(
     private val dataStore: DataStore<Preferences>
 ) : ViewModel() {
 
+    // Keep for backward compatibility if needed, but using SettingsKeys preferred
     companion object {
-        val KEY_DYNAMIC_COLOR = booleanPreferencesKey("dynamic_color")
-        val KEY_GAPLESS_PLAYBACK = booleanPreferencesKey("gapless_playback")
+        val KEY_DYNAMIC_COLOR = SettingsKeys.DYNAMIC_COLOR
+        val KEY_THEME_MODE = SettingsKeys.THEME_MODE
+        val KEY_GAPLESS_PLAYBACK = SettingsKeys.GAPLESS_PLAYBACK
     }
 
     val uiState: StateFlow<SettingsUiState> = dataStore.data
         .map { prefs ->
             SettingsUiState(
-                dynamicColorEnabled = prefs[KEY_DYNAMIC_COLOR] ?: true,
-                gaplessPlayback = prefs[KEY_GAPLESS_PLAYBACK] ?: true
+                dynamicColorEnabled = prefs[SettingsKeys.DYNAMIC_COLOR] ?: true,
+                themeMode = prefs[SettingsKeys.THEME_MODE] ?: "system",
+                gaplessPlayback = prefs[SettingsKeys.GAPLESS_PLAYBACK] ?: true,
+                crossfadeDurationMs = prefs[SettingsKeys.CROSSFADE_DURATION] ?: 0
             )
         }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), SettingsUiState())
 
     fun setDynamicColor(enabled: Boolean) {
         viewModelScope.launch {
-            dataStore.edit { it[KEY_DYNAMIC_COLOR] = enabled }
+            dataStore.edit { it[SettingsKeys.DYNAMIC_COLOR] = enabled }
+        }
+    }
+
+    fun setThemeMode(mode: String) {
+        viewModelScope.launch {
+            dataStore.edit { it[SettingsKeys.THEME_MODE] = mode }
         }
     }
 
     fun setGaplessPlayback(enabled: Boolean) {
         viewModelScope.launch {
-            dataStore.edit { it[KEY_GAPLESS_PLAYBACK] = enabled }
+            dataStore.edit { it[SettingsKeys.GAPLESS_PLAYBACK] = enabled }
         }
     }
 }

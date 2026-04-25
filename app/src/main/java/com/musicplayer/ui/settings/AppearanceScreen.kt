@@ -1,5 +1,6 @@
 package com.musicplayer.ui.settings
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -16,6 +17,7 @@ fun AppearanceScreen(
     viewModel: SettingsViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    var showThemeDialog by remember { mutableStateOf(false) }
 
     Scaffold(
         topBar = {
@@ -45,12 +47,36 @@ fun AppearanceScreen(
 
             ListItem(
                 headlineContent = { Text("Theme") },
-                supportingContent = { Text("System default") },
+                supportingContent = { Text(uiState.themeMode.replaceFirstChar { it.uppercase() }) },
                 leadingContent = { Icon(Icons.Default.Palette, contentDescription = null) },
-                trailingContent = { Icon(Icons.Default.ChevronRight, contentDescription = null) }
+                trailingContent = { Icon(Icons.Default.ChevronRight, contentDescription = null) },
+                modifier = Modifier.clickable { showThemeDialog = true }
             )
             HorizontalDivider()
         }
+    }
+
+    if (showThemeDialog) {
+        AlertDialog(
+            onDismissRequest = { showThemeDialog = false },
+            title = { Text("Select Theme") },
+            text = {
+                Column {
+                    listOf("system", "light", "dark").forEach { mode ->
+                        ListItem(
+                            headlineContent = { Text(mode.replaceFirstChar { it.uppercase() }) },
+                            modifier = Modifier.clickable {
+                                viewModel.setThemeMode(mode)
+                                showThemeDialog = false
+                            }
+                        )
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showThemeDialog = false }) { Text("Cancel") }
+            }
+        )
     }
 }
 

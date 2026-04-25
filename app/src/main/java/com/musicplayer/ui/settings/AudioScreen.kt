@@ -13,11 +13,11 @@ import androidx.hilt.navigation.compose.hiltViewModel
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AudioScreen(
+    onNavigateToEqualizer: () -> Unit,
     onNavigateBack: () -> Unit,
     viewModel: AudioSettingsViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
-    var showEqualizerDialog by remember { mutableStateOf(false) }
     var showCrossfadeDialog by remember { mutableStateOf(false) }
 
     Scaffold(
@@ -51,7 +51,7 @@ fun AudioScreen(
                 supportingContent = { Text(if (uiState.equalizerEnabled) "On" else "Off") },
                 leadingContent = { Icon(Icons.Default.Equalizer, contentDescription = null) },
                 trailingContent = { Icon(Icons.Default.ChevronRight, contentDescription = null) },
-                modifier = Modifier.clickable { showEqualizerDialog = true }
+                modifier = Modifier.clickable { onNavigateToEqualizer() }
             )
             HorizontalDivider()
 
@@ -64,34 +64,6 @@ fun AudioScreen(
             )
             HorizontalDivider()
         }
-    }
-
-        if (showEqualizerDialog) {
-        AlertDialog(
-            onDismissRequest = { showEqualizerDialog = false },
-            title = { Text("Equalizer") },
-            text = {
-                Column {
-                    ListItem(
-                        headlineContent = { Text("Off") },
-                        modifier = Modifier.clickable {
-                            viewModel.setEqualizerEnabled(false)
-                            showEqualizerDialog = false
-                        }
-                    )
-                    ListItem(
-                        headlineContent = { Text("On") },
-                        modifier = Modifier.clickable {
-                            viewModel.setEqualizerEnabled(true)
-                            showEqualizerDialog = false
-                        }
-                    )
-                }
-            },
-            confirmButton = {
-                TextButton(onClick = { showEqualizerDialog = false }) { Text("Cancel") }
-            }
-        )
     }
 
     if (showCrossfadeDialog) {

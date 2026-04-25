@@ -8,6 +8,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -15,6 +16,9 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -248,6 +252,7 @@ private fun AddSourceDialog(
     var baseUrl by remember { mutableStateOf("") }
     var username by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
+    var passwordVisible by remember { mutableStateOf(false) }
     var selectedType by remember { mutableStateOf(MediaSourceType.JELLYFIN) }
     var isTestingConnection by remember { mutableStateOf(false) }
     var testResult by remember { mutableStateOf<TestConnectionResult?>(null) }
@@ -304,7 +309,18 @@ private fun AddSourceDialog(
                         value = password,
                         onValueChange = { password = it },
                         label = { Text("Password") },
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier.fillMaxWidth(),
+                        visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                        trailingIcon = {
+                            val image = if (passwordVisible)
+                                Icons.Default.Visibility
+                            else Icons.Default.VisibilityOff
+
+                            IconButton(onClick = { passwordVisible = !passwordVisible }) {
+                                Icon(imageVector = image, contentDescription = if (passwordVisible) "Hide password" else "Show password")
+                            }
+                        },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password)
                     )
 
                     // Test connection button
@@ -400,6 +416,7 @@ private fun EditSourceDialog(
     var baseUrl by remember { mutableStateOf(source.baseUrl) }
     var username by remember { mutableStateOf(source.username) }
     var password by remember { mutableStateOf(source.password) }
+    var passwordVisible by remember { mutableStateOf(false) }
     var selectedType by remember { mutableStateOf(source.type) }
     var isTestingConnection by remember { mutableStateOf(false) }
     var testResult by remember { mutableStateOf<TestConnectionResult?>(null) }
@@ -446,7 +463,18 @@ private fun EditSourceDialog(
                         value = password,
                         onValueChange = { password = it },
                         label = { Text("Password") },
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier.fillMaxWidth(),
+                        visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                        trailingIcon = {
+                            val image = if (passwordVisible)
+                                Icons.Default.Visibility
+                            else Icons.Default.VisibilityOff
+
+                            IconButton(onClick = { passwordVisible = !passwordVisible }) {
+                                Icon(imageVector = image, contentDescription = if (passwordVisible) "Hide password" else "Show password")
+                            }
+                        },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password)
                     )
 
                     // Test connection button

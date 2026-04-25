@@ -2,10 +2,10 @@
 Music Player for all platforms
 
 ## Current release
-- v0.0.4 — added local playback support, album/artist browsing, and playlist management improvements
+- v0.0.5 — added equalizer support, Android Auto settings, and persistent audio/theme controls
 
 ## Current progress
-- Implemented local playback and richer album/artist browsing UX.
-- Added playlist detail screens and Add to Playlist support.
-- Enhanced media source persistence and player state handling across the app.
+- Implemented equalizer support and audio settings screens.
+- Added Android Auto settings and better theme persistence.
+- Continued improving playlist detail workflows and playback state persistence.
 

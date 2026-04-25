@@ -57,7 +57,7 @@ fun SettingsScreen(
             item {
                 ListItem(
                     headlineContent = { Text("Appearance") },
-                    supportingContent = { Text("Theme, dynamic color") },
+                    supportingContent = { Text("Theme: ${uiState.themeMode.replaceFirstChar { it.uppercase() }}, Dynamic Color: ${if (uiState.dynamicColorEnabled) "On" else "Off"}") },
                     leadingContent = { Icon(Icons.Default.Palette, contentDescription = null) },
                     trailingContent = { Icon(Icons.Default.ChevronRight, contentDescription = null) },
                     modifier = Modifier
