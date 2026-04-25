@@ -10,6 +10,7 @@ import com.musicplayer.ui.home.HomeScreen
 import com.musicplayer.ui.library.LibraryScreen
 import com.musicplayer.ui.library.AlbumDetailScreen
 import com.musicplayer.ui.library.ArtistDetailScreen
+import com.musicplayer.ui.library.PlaylistDetailScreen
 import com.musicplayer.ui.player.PlayerScreen
 import com.musicplayer.ui.search.SearchScreen
 import com.musicplayer.ui.settings.AppearanceScreen
@@ -35,6 +36,9 @@ sealed class Screen(val route: String) {
     }
     data object ArtistDetail : Screen("artist_detail/{artistName}") {
         fun createRoute(artistName: String) = "artist_detail/$artistName"
+    }
+    data object PlaylistDetail : Screen("playlist_detail/{playlistId}") {
+        fun createRoute(playlistId: String) = "playlist_detail/$playlistId"
     }
 }
 
@@ -63,6 +67,9 @@ fun MusicPlayerNavGraph(
                 onNavigateToArtist = { artistName -> 
                     navController.navigate(Screen.ArtistDetail.createRoute(artistName)) 
                 },
+                onNavigateToPlaylist = { playlistId ->
+                    navController.navigate(Screen.PlaylistDetail.createRoute(playlistId))
+                },
                 onNavigateBack = { navController.popBackStack() }
             )
         }
@@ -70,6 +77,14 @@ fun MusicPlayerNavGraph(
             val albumId = backStackEntry.arguments?.getString("albumId") ?: ""
             AlbumDetailScreen(
                 albumId = albumId,
+                onNavigateToPlayer = { navController.navigate(Screen.Player.route) },
+                onNavigateBack = { navController.popBackStack() }
+            )
+        }
+        composable(Screen.PlaylistDetail.route) { backStackEntry ->
+            val playlistId = backStackEntry.arguments?.getString("playlistId") ?: ""
+            PlaylistDetailScreen(
+                playlistId = playlistId,
                 onNavigateToPlayer = { navController.navigate(Screen.Player.route) },
                 onNavigateBack = { navController.popBackStack() }
             )

@@ -20,10 +20,22 @@ interface MediaSourceDao {
 
 @Dao
 interface PlaylistDao {
-    @Query("SELECT * FROM playlists ORDER BY name")
+    @Query("""
+        SELECT *, 
+               (SELECT COUNT(*) FROM playlist_tracks WHERE playlistId = playlists.id) as trackCount,
+               (SELECT COALESCE(SUM(duration), 0) FROM tracks JOIN playlist_tracks ON tracks.id = playlist_tracks.trackId WHERE playlist_tracks.playlistId = playlists.id) as duration
+        FROM playlists 
+        ORDER BY name
+    """)
     fun getAllPlaylists(): Flow<List<PlaylistEntity>>
 
-    @Query("SELECT * FROM playlists WHERE id = :id")
+    @Query("""
+        SELECT *, 
+               (SELECT COUNT(*) FROM playlist_tracks WHERE playlistId = playlists.id) as trackCount,
+               (SELECT COALESCE(SUM(duration), 0) FROM tracks JOIN playlist_tracks ON tracks.id = playlist_tracks.trackId WHERE playlist_tracks.playlistId = playlists.id) as duration
+        FROM playlists 
+        WHERE id = :id
+    """)
     suspend fun getPlaylistById(id: String): PlaylistEntity?
 
     @Upsert
@@ -37,6 +49,9 @@ interface PlaylistDao {
 
     @Query("DELETE FROM playlist_tracks WHERE playlistId = :playlistId")
     suspend fun deletePlaylistTracks(playlistId: String)
+
+    @Query("DELETE FROM playlist_tracks WHERE playlistId = :playlistId AND trackId = :trackId")
+    suspend fun deleteTrackFromPlaylist(playlistId: String, trackId: String)
 
     @Query("""
         SELECT t.* FROM tracks t 

@@ -98,4 +98,40 @@ class LibraryViewModel @Inject constructor(
             }
         }
     }
+
+    fun addTrackToPlaylist(track: Track, playlistId: String) {
+        viewModelScope.launch {
+            repository.addTrackToPlaylist(playlistId, track.id)
+        }
+    }
+
+    fun createPlaylist(name: String) {
+        viewModelScope.launch {
+            repository.createPlaylist(name)
+        }
+    }
+
+    fun createPlaylistAndAddTrack(name: String, track: Track) {
+        viewModelScope.launch {
+            val playlistId = repository.createPlaylist(name)
+            repository.addTrackToPlaylist(playlistId, track.id)
+        }
+    }
+
+    fun deletePlaylist(playlistId: String) {
+        viewModelScope.launch {
+            repository.deletePlaylist(playlistId)
+        }
+    }
+
+    fun playPlaylist(playlist: Playlist) {
+        viewModelScope.launch {
+            // Need to fetch tracks for this playlist
+            repository.getPlaylistTracks(playlist.id).firstOrNull()?.let { tracks ->
+                if (tracks.isNotEmpty()) {
+                    playerHolder.playTracks(tracks, 0)
+                }
+            }
+        }
+    }
 }

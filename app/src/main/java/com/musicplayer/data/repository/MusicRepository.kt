@@ -103,6 +103,9 @@ class MusicRepository @Inject constructor(
     fun getAllPlaylists(): Flow<List<Playlist>> =
         playlistDao.getAllPlaylists().map { list -> list.map { it.toDomain() } }
 
+    fun getPlaylistTracks(playlistId: String): Flow<List<Track>> =
+        playlistDao.getPlaylistTracks(playlistId).map { list -> list.map { it.toDomain() } }
+
     suspend fun getPlaylistWithTracks(playlistId: String): Playlist? {
         val entity = playlistDao.getPlaylistById(playlistId) ?: return null
         // We'll collect once from the flow to get the current state
@@ -113,9 +116,50 @@ class MusicRepository @Inject constructor(
         playlistDao.upsertPlaylist(playlist.toEntity())
     }
 
+    suspend fun createPlaylist(name: String): String {
+        val id = java.util.UUID.randomUUID().toString()
+        val playlist = Playlist(
+            id = id,
+            name = name,
+            artworkUri = null,
+            sourceId = "local_user",
+            sourceType = MediaSourceType.USER,
+            isLocal = true,
+            description = "",
+            trackCount = 0,
+            duration = 0
+        )
+        playlistDao.upsertPlaylist(playlist.toEntity())
+        return id
+    }
+
+    suspend fun addTrackToPlaylist(playlistId: String, trackId: String) {
+        val track = trackDao.getTrackById(trackId) ?: return
+        val playlist = playlistDao.getPlaylistById(playlistId) ?: return
+
+        val playlistTrack = com.musicplayer.data.local.PlaylistTrackEntity(
+            playlistId = playlistId,
+            trackId = trackId,
+            position = playlist.trackCount
+        )
+        playlistDao.upsertPlaylistTrack(playlistTrack)
+
+        // Update playlist metadata (increment count and total duration)
+        playlistDao.upsertPlaylist(
+            playlist.copy(
+                trackCount = playlist.trackCount + 1,
+                duration = playlist.duration + track.duration
+            )
+        )
+    }
+
     suspend fun deletePlaylist(id: String) {
         playlistDao.deletePlaylistTracks(id)
         playlistDao.deletePlaylist(id)
+    }
+
+    suspend fun removeTrackFromPlaylist(playlistId: String, trackId: String) {
+        playlistDao.deleteTrackFromPlaylist(playlistId, trackId)
     }
 
     // ── Source synchronization ─────────────────────────────────────────────
@@ -164,7 +208,8 @@ class MusicRepository @Inject constructor(
                 syncPlexSource(source)
             }
             MediaSourceType.AUDIOBOOKSHELF,
-            MediaSourceType.CLOUD_DRIVE -> {
+            MediaSourceType.CLOUD_DRIVE,
+            MediaSourceType.USER -> {
                 Timber.w("Sync not supported for source type: ${source.type}")
                 emptyList()
             }

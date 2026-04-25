@@ -14,6 +14,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.0.4] - 2026-04-25
+
+### Added
+- Added local playback support with improved album and artist browsing.
+- Added playlist detail screens and Add to Playlist dialog for in-app queue management.
+- Enhanced media source persistence and player state handling across the app.
+- Updated `app` version to `0.0.4` and `versionCode` to `4`.
+
+---
+
 ## [0.0.3] - 2026-04-25
 
 ### Added

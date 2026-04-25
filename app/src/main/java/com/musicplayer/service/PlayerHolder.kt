@@ -203,6 +203,24 @@ class PlayerHolder @Inject constructor(
         }
     }
 
+    fun playUri(uri: Uri) {
+        val mediaItem = MediaItem.Builder()
+            .setUri(uri)
+            .setMediaMetadata(
+                androidx.media3.common.MediaMetadata.Builder()
+                    .setTitle(uri.lastPathSegment ?: "External Audio")
+                    .build()
+            )
+            .build()
+        
+        withPlayer {
+            setMediaItem(mediaItem)
+            prepare()
+            play()
+        }
+        context.startService(Intent(context, MusicPlaybackService::class.java))
+    }
+
     init {
         val request = NetworkRequest.Builder()
             .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)

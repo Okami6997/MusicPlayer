@@ -122,7 +122,8 @@ class SourcesViewModel @Inject constructor(
                 testSubsonicConnection(source)
             }
             MediaSourceType.AUDIOBOOKSHELF,
-            MediaSourceType.CLOUD_DRIVE -> {
+            MediaSourceType.CLOUD_DRIVE,
+            MediaSourceType.USER -> {
                 TestConnectionResult.Error("Not yet supported")
             }
         }

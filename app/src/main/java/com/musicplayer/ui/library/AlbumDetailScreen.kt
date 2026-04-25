@@ -17,6 +17,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
 import com.musicplayer.domain.model.Album
 import com.musicplayer.domain.model.Track
+import com.musicplayer.ui.components.AddToPlaylistDialog
 import com.musicplayer.ui.components.TrackListItem
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -28,9 +29,25 @@ fun AlbumDetailScreen(
     viewModel: AlbumDetailViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val playlists by viewModel.getAllPlaylists().collectAsState(initial = emptyList())
+    var trackToAddToPlaylist by remember { mutableStateOf<Track?>(null) }
 
     LaunchedEffect(albumId) {
         viewModel.loadAlbum(albumId)
+    }
+
+    if (trackToAddToPlaylist != null) {
+        AddToPlaylistDialog(
+            track = trackToAddToPlaylist!!,
+            playlists = playlists,
+            onDismiss = { trackToAddToPlaylist = null },
+            onPlaylistSelected = { playlist ->
+                viewModel.addTrackToPlaylist(trackToAddToPlaylist!!, playlist.id)
+            },
+            onCreatePlaylist = { name ->
+                viewModel.createPlaylistAndAddTrack(name, trackToAddToPlaylist!!)
+            }
+        )
     }
 
     Scaffold(
@@ -70,7 +87,8 @@ fun AlbumDetailScreen(
                             viewModel.playTrack(track)
                             onNavigateToPlayer()
                         },
-                        onDownloadClick = { viewModel.downloadTrack(track) }
+                        onDownloadClick = { viewModel.downloadTrack(track) },
+                        onMoreClick = { trackToAddToPlaylist = track }
                     )
                 }
             }

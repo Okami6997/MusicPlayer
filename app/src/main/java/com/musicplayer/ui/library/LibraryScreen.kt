@@ -10,8 +10,11 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Download
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -21,6 +24,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.musicplayer.domain.model.Track
+import com.musicplayer.ui.components.AddToPlaylistDialog
 import com.musicplayer.ui.components.TrackListItem
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -29,6 +34,7 @@ fun LibraryScreen(
     onNavigateToPlayer: () -> Unit,
     onNavigateToAlbum: (String) -> Unit,
     onNavigateToArtist: (String) -> Unit,
+    onNavigateToPlaylist: (String) -> Unit,
     onNavigateBack: () -> Unit,
     viewModel: LibraryViewModel = hiltViewModel()
 ) {
@@ -36,6 +42,44 @@ fun LibraryScreen(
     var selectedTab by remember { mutableIntStateOf(0) }
     val tabs = listOf("Tracks", "Albums", "Artists", "Playlists")
     val context = LocalContext.current
+
+    var trackToAddToPlaylist by remember { mutableStateOf<Track?>(null) }
+    var showCreatePlaylistDialog by remember { mutableStateOf(false) }
+    var newPlaylistName by remember { mutableStateOf("") }
+
+    if (showCreatePlaylistDialog) {
+        AlertDialog(
+            onDismissRequest = { showCreatePlaylistDialog = false },
+            title = { Text("New Playlist") },
+            text = {
+                OutlinedTextField(
+                    value = newPlaylistName,
+                    onValueChange = { newPlaylistName = it },
+                    label = { Text("Name") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        if (newPlaylistName.isNotBlank()) {
+                            viewModel.createPlaylist(newPlaylistName)
+                            newPlaylistName = ""
+                            showCreatePlaylistDialog = false
+                        }
+                    }
+                ) {
+                    Text("Create")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showCreatePlaylistDialog = false }) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
 
     val permissionsToRequest = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
         arrayOf(Manifest.permission.READ_MEDIA_AUDIO)
@@ -62,6 +106,20 @@ fun LibraryScreen(
         }
     }
 
+    if (trackToAddToPlaylist != null) {
+        AddToPlaylistDialog(
+            track = trackToAddToPlaylist!!,
+            playlists = uiState.playlists,
+            onDismiss = { trackToAddToPlaylist = null },
+            onPlaylistSelected = { playlist ->
+                viewModel.addTrackToPlaylist(trackToAddToPlaylist!!, playlist.id)
+            },
+            onCreatePlaylist = { name ->
+                viewModel.createPlaylistAndAddTrack(name, trackToAddToPlaylist!!)
+            }
+        )
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -72,6 +130,13 @@ fun LibraryScreen(
                     }
                 }
             )
+        },
+        floatingActionButton = {
+            if (selectedTab == 3) {
+                FloatingActionButton(onClick = { showCreatePlaylistDialog = true }) {
+                    Icon(Icons.Default.Add, contentDescription = "Create Playlist")
+                }
+            }
         }
     ) { paddingValues ->
         Column(modifier = Modifier.fillMaxSize().padding(paddingValues)) {
@@ -98,7 +163,8 @@ fun LibraryScreen(
                                         viewModel.playTrack(track)
                                         onNavigateToPlayer()
                                     },
-                                    onDownloadClick = { viewModel.downloadTrack(track) }
+                                    onDownloadClick = { viewModel.downloadTrack(track) },
+                                    onMoreClick = { trackToAddToPlaylist = track }
                                 )
                             }
                         }
@@ -146,8 +212,41 @@ fun LibraryScreen(
                         LazyColumn {
                             items(uiState.playlists) { playlist ->
                                 ListItem(
+                                    modifier = Modifier.clickable {
+                                        onNavigateToPlaylist(playlist.id)
+                                    },
                                     headlineContent = { Text(playlist.name) },
-                                    supportingContent = { Text("${playlist.trackCount} tracks") }
+                                    supportingContent = { Text("${playlist.trackCount} tracks") },
+                                    trailingContent = {
+                                        var showMenu by remember { mutableStateOf(false) }
+                                        Box {
+                                            IconButton(onClick = { showMenu = true }) {
+                                                Icon(Icons.Default.MoreVert, contentDescription = "More")
+                                            }
+                                            DropdownMenu(
+                                                expanded = showMenu,
+                                                onDismissRequest = { showMenu = false }
+                                            ) {
+                                                DropdownMenuItem(
+                                                    text = { Text("Play") },
+                                                    leadingIcon = { Icon(Icons.Default.MusicNote, null) },
+                                                    onClick = {
+                                                        viewModel.playPlaylist(playlist)
+                                                        onNavigateToPlayer()
+                                                        showMenu = false
+                                                    }
+                                                )
+                                                DropdownMenuItem(
+                                                    text = { Text("Delete") },
+                                                    leadingIcon = { Icon(Icons.Default.Delete, null) },
+                                                    onClick = {
+                                                        viewModel.deletePlaylist(playlist.id)
+                                                        showMenu = false
+                                                    }
+                                                )
+                                            }
+                                        }
+                                    }
                                 )
                             }
                         }

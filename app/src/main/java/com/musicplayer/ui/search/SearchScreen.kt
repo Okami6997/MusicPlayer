@@ -17,6 +17,8 @@ import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.musicplayer.domain.model.Track
+import com.musicplayer.ui.components.AddToPlaylistDialog
 import com.musicplayer.ui.components.TrackListItem
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -27,8 +29,10 @@ fun SearchScreen(
     viewModel: SearchViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val playlists by viewModel.getAllPlaylists().collectAsState(initial = emptyList())
+    var trackToAddToPlaylist by remember { mutableStateOf<Track?>(null) }
     val focusRequester = remember { FocusRequester() }
-    
+
     // Internal state to manage the TextField synchronously and maintain cursor position
     var textFieldValue by remember {
         mutableStateOf(
@@ -51,6 +55,20 @@ fun SearchScreen(
 
     LaunchedEffect(Unit) {
         focusRequester.requestFocus()
+    }
+
+    if (trackToAddToPlaylist != null) {
+        AddToPlaylistDialog(
+            track = trackToAddToPlaylist!!,
+            playlists = playlists,
+            onDismiss = { trackToAddToPlaylist = null },
+            onPlaylistSelected = { playlist ->
+                viewModel.addTrackToPlaylist(trackToAddToPlaylist!!, playlist.id)
+            },
+            onCreatePlaylist = { name ->
+                viewModel.createPlaylistAndAddTrack(name, trackToAddToPlaylist!!)
+            }
+        )
     }
 
     Scaffold(
@@ -116,7 +134,8 @@ fun SearchScreen(
                                 viewModel.playTrack(track)
                                 onNavigateToPlayer()
                             },
-                            onDownloadClick = { viewModel.downloadTrack(track) }
+                            onDownloadClick = { viewModel.downloadTrack(track) },
+                            onMoreClick = { trackToAddToPlaylist = track }
                         )
                     }
                 }

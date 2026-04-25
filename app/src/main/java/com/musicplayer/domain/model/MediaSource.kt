@@ -12,7 +12,8 @@ enum class MediaSourceType {
     OPEN_SUBSONIC,
     NAVIDROME,
     AUDIOBOOKSHELF,
-    CLOUD_DRIVE
+    CLOUD_DRIVE,
+    USER
 }
 
 /**

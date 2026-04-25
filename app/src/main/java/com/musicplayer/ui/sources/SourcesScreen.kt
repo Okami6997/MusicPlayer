@@ -216,6 +216,7 @@ private fun SourceListItem(
                     MediaSourceType.NAVIDROME -> Icons.Default.MusicNote
                     MediaSourceType.AUDIOBOOKSHELF -> Icons.Default.MenuBook
                     MediaSourceType.CLOUD_DRIVE -> Icons.Default.Cloud
+                    MediaSourceType.USER -> Icons.Default.LibraryMusic
                 },
                 contentDescription = null
             )

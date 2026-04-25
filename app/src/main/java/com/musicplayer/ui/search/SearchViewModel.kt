@@ -74,4 +74,19 @@ class SearchViewModel @Inject constructor(
             downloadRepository.downloadTrack(track)
         }
     }
+
+    fun getAllPlaylists() = repository.getAllPlaylists()
+
+    fun addTrackToPlaylist(track: Track, playlistId: String) {
+        viewModelScope.launch {
+            repository.addTrackToPlaylist(playlistId, track.id)
+        }
+    }
+
+    fun createPlaylistAndAddTrack(name: String, track: Track) {
+        viewModelScope.launch {
+            val playlistId = repository.createPlaylist(name)
+            repository.addTrackToPlaylist(playlistId, track.id)
+        }
+    }
 }

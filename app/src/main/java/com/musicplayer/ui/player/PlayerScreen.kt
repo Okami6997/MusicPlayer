@@ -8,6 +8,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.PlaylistAdd
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -44,11 +45,28 @@ fun PlayerScreen(
     val dynamicScheme = animatedArtworkColorScheme(artworkColors)
 
     MaterialTheme(colorScheme = dynamicScheme) {
-        Box(modifier = Modifier.fillMaxSize()) {
+        var showPlaylistDialog by remember { mutableStateOf(false) }
+        val playlists by viewModel.getAllPlaylists().collectAsState(initial = emptyList())
+
+        if (showPlaylistDialog && track != null) {
+            com.musicplayer.ui.components.AddToPlaylistDialog(
+                track = track,
+                playlists = playlists,
+                onDismiss = { showPlaylistDialog = false },
+                onPlaylistSelected = { playlist ->
+                    viewModel.addCurrentTrackToPlaylist(playlist.id)
+                },
+                onCreatePlaylist = { name ->
+                    viewModel.createPlaylistAndAddCurrentTrack(name)
+                }
+            )
+        }
+
+        Box(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
             // ── blurred, faded album art background ──────────────────────
             if (track?.artworkUri != null) {
-                Image(
-                    painter = rememberAsyncImagePainter(model = track.artworkUri),
+                AsyncImage(
+                    model = track.artworkUri,
                     contentDescription = null,
                     contentScale = ContentScale.Crop,
                     modifier = Modifier
@@ -94,6 +112,9 @@ fun PlayerScreen(
                                     contentDescription = "Download"
                                 )
                             }
+                            IconButton(onClick = { showPlaylistDialog = true }) {
+                                Icon(Icons.AutoMirrored.Filled.PlaylistAdd, contentDescription = "Add to Playlist")
+                            }
                             if (uiState.lyrics != null) {
                                 IconButton(onClick = { viewModel.toggleLyrics() }) {
                                     Icon(
@@ -106,14 +127,81 @@ fun PlayerScreen(
                                     )
                                 }
                             }
-                            IconButton(onClick = { /* Open queue */ }) {
-                                Icon(Icons.Default.QueueMusic, contentDescription = "Queue")
+                            IconButton(onClick = { viewModel.toggleQueue() }) {
+                                Icon(
+                                    imageVector = Icons.Default.QueueMusic,
+                                    contentDescription = "Queue",
+                                    tint = if (uiState.showQueue)
+                                        MaterialTheme.colorScheme.primary
+                                    else
+                                        MaterialTheme.colorScheme.onSurface
+                                )
                             }
                         }
                     )
                 }
             ) { paddingValues ->
-                PlayerContent(uiState, viewModel, paddingValues)
+                Box(modifier = Modifier.padding(paddingValues)) {
+                    PlayerContent(uiState, viewModel)
+                    
+                    if (uiState.showQueue) {
+                        QueueView(
+                            queue = uiState.queue,
+                            currentIndex = uiState.currentQueueIndex,
+                            onTrackClick = { index -> viewModel.playQueueIndex(index) },
+                            onDismiss = { viewModel.toggleQueue() }
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun QueueView(
+    queue: List<com.musicplayer.domain.model.Track>,
+    currentIndex: Int,
+    onTrackClick: (Int) -> Unit,
+    onDismiss: () -> Unit
+) {
+    Surface(
+        modifier = Modifier.fillMaxSize(),
+        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f)
+    ) {
+        Column(modifier = Modifier.fillMaxSize()) {
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(16.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text("Up Next", style = MaterialTheme.typography.titleLarge)
+                IconButton(onClick = onDismiss) {
+                    Icon(Icons.Default.Close, contentDescription = "Close queue")
+                }
+            }
+            
+            LazyColumn(modifier = Modifier.fillMaxSize()) {
+                itemsIndexed(queue) { index, track ->
+                    val isPlaying = index == currentIndex
+                    ListItem(
+                        modifier = Modifier.clickable { onTrackClick(index) },
+                        headlineContent = { 
+                            Text(
+                                track.title, 
+                                color = if (isPlaying) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
+                            ) 
+                        },
+                        supportingContent = { Text(track.artist) },
+                        leadingContent = {
+                            if (isPlaying) {
+                                Icon(Icons.Default.PlayArrow, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                            } else {
+                                Text("${index + 1}", style = MaterialTheme.typography.bodySmall)
+                            }
+                        }
+                    )
+                }
             }
         }
     }
@@ -122,15 +210,13 @@ fun PlayerScreen(
 @Composable
 private fun PlayerContent(
     uiState: com.musicplayer.domain.model.PlayerUiState,
-    viewModel: PlayerViewModel,
-    paddingValues: PaddingValues
+    viewModel: PlayerViewModel
 ) {
     val track = uiState.currentTrack
 
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(paddingValues)
             .padding(horizontal = 24.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {

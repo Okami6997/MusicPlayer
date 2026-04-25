@@ -2,8 +2,10 @@
 Music Player for all platforms
 
 ## Current release
-- v0.0.3 — improved Media3 notification visibility and startup foreground service behavior
+- v0.0.4 — added local playback support, album/artist browsing, and playlist management improvements
 
 ## Current progress
-- Implemented Media3 notification provider handling in `app/service` to improve Samsung notification placement and MediaStyle card behavior.
+- Implemented local playback and richer album/artist browsing UX.
+- Added playlist detail screens and Add to Playlist support.
+- Enhanced media source persistence and player state handling across the app.
 

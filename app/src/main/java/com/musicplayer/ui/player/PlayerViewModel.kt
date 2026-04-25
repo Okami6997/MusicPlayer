@@ -29,7 +29,8 @@ import javax.inject.Inject
 class PlayerViewModel @Inject constructor(
     private val playerHolder: PlayerHolder,
     private val lyricsLoader: LyricsLoader,
-    private val downloadRepository: DownloadRepository
+    private val downloadRepository: DownloadRepository,
+    private val musicRepository: com.musicplayer.data.repository.MusicRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(PlayerUiState())
@@ -116,9 +117,27 @@ class PlayerViewModel @Inject constructor(
         val player = playerHolder.currentPlayer
         val mediaItem = player.currentMediaItem
         val queue = playerHolder.queue.value
-        val track = if (mediaItem != null) {
+        
+        var track = if (mediaItem != null) {
             queue.find { it.id == mediaItem.mediaId }
         } else null
+
+        // If not in queue, try to create from MediaItem metadata (for external files)
+        if (track == null && mediaItem != null) {
+            val metadata = mediaItem.mediaMetadata
+            track = Track(
+                id = mediaItem.mediaId,
+                title = (metadata.title ?: metadata.displayTitle ?: "External Audio").toString(),
+                artist = (metadata.artist ?: metadata.albumArtist ?: "Unknown Artist").toString(),
+                album = (metadata.albumTitle ?: "External File").toString(),
+                duration = player.duration.coerceAtLeast(0L),
+                uri = mediaItem.localConfiguration?.uri?.toString() ?: "",
+                artworkUri = metadata.artworkUri?.toString(),
+                sourceId = "external",
+                sourceName = "External File",
+                sourceType = com.musicplayer.domain.model.MediaSourceType.LOCAL
+            )
+        }
 
         _uiState.update { current ->
             current.copy(
@@ -129,10 +148,10 @@ class PlayerViewModel @Inject constructor(
             )
         }
 
-        if (track != null && track.id != lastLoadedTrackId) {
+        if (track != null && track.id != lastLoadedTrackId && track.sourceId != "external") {
             lastLoadedTrackId = track.id
             loadLyrics(track)
-        } else if (track == null) {
+        } else if (track == null || track.sourceId == "external") {
             lastLoadedTrackId = null
             _uiState.update { it.copy(lyrics = null, currentLyricsLineIndex = -1) }
         }
@@ -230,6 +249,32 @@ class PlayerViewModel @Inject constructor(
         viewModelScope.launch {
             downloadRepository.downloadTrack(track)
         }
+    }
+
+    fun getAllPlaylists() = musicRepository.getAllPlaylists()
+
+    fun addCurrentTrackToPlaylist(playlistId: String) {
+        val track = _uiState.value.currentTrack ?: return
+        viewModelScope.launch {
+            musicRepository.addTrackToPlaylist(playlistId, track.id)
+        }
+    }
+
+    fun createPlaylistAndAddCurrentTrack(name: String) {
+        val track = _uiState.value.currentTrack ?: return
+        viewModelScope.launch {
+            val playlistId = musicRepository.createPlaylist(name)
+            musicRepository.addTrackToPlaylist(playlistId, track.id)
+        }
+    }
+
+    fun toggleQueue() {
+        _uiState.update { it.copy(showQueue = !it.showQueue) }
+    }
+
+    fun playQueueIndex(index: Int) {
+        playerHolder.currentPlayer.seekTo(index, 0)
+        _uiState.update { it.copy(showQueue = false) }
     }
 
     override fun onCleared() {
