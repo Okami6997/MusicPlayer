@@ -17,7 +17,6 @@ import com.musicplayer.ui.settings.AppearanceScreen
 import com.musicplayer.ui.settings.AudioScreen
 import com.musicplayer.ui.settings.AndroidAutoScreen
 import com.musicplayer.ui.settings.DownloadsScreen
-import com.musicplayer.ui.settings.EqualizerScreen
 import com.musicplayer.ui.settings.SettingsScreen
 import com.musicplayer.ui.sources.SourcesScreen
 
@@ -30,7 +29,6 @@ sealed class Screen(val route: String) {
     data object Sources : Screen("sources")
     data object Appearance : Screen("appearance")
     data object Audio : Screen("audio")
-    data object Equalizer : Screen("equalizer")
     data object Downloads : Screen("downloads")
     data object AndroidAuto : Screen("android_auto")
     data object AlbumDetail : Screen("album_detail/{albumId}") {
@@ -135,12 +133,6 @@ fun MusicPlayerNavGraph(
         }
         composable(Screen.Audio.route) {
             AudioScreen(
-                onNavigateToEqualizer = { navController.navigate(Screen.Equalizer.route) },
-                onNavigateBack = { navController.popBackStack() }
-            )
-        }
-        composable(Screen.Equalizer.route) {
-            EqualizerScreen(
                 onNavigateBack = { navController.popBackStack() }
             )
         }

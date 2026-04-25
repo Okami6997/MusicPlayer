@@ -70,8 +70,8 @@ fun SettingsScreen(
             item {
                 ListItem(
                     headlineContent = { Text("Audio") },
-                    supportingContent = { Text("Equalizer, crossfade, gapless playback") },
-                    leadingContent = { Icon(Icons.Default.Equalizer, contentDescription = null) },
+                    supportingContent = { Text("Crossfade, gapless playback") },
+                    leadingContent = { Icon(Icons.Default.MusicNote, contentDescription = null) },
                     trailingContent = { Icon(Icons.Default.ChevronRight, contentDescription = null) },
                     modifier = Modifier
                         .fillMaxWidth()

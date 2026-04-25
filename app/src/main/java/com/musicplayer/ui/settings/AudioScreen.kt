@@ -13,7 +13,6 @@ import androidx.hilt.navigation.compose.hiltViewModel
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AudioScreen(
-    onNavigateToEqualizer: () -> Unit,
     onNavigateBack: () -> Unit,
     viewModel: AudioSettingsViewModel = hiltViewModel()
 ) {
@@ -43,15 +42,6 @@ fun AudioScreen(
                 icon = Icons.Default.MusicNote,
                 checked = uiState.gaplessPlayback,
                 onCheckedChange = { viewModel.setGaplessPlayback(it) }
-            )
-            HorizontalDivider()
-
-            ListItem(
-                headlineContent = { Text("Equalizer") },
-                supportingContent = { Text(if (uiState.equalizerEnabled) "On" else "Off") },
-                leadingContent = { Icon(Icons.Default.Equalizer, contentDescription = null) },
-                trailingContent = { Icon(Icons.Default.ChevronRight, contentDescription = null) },
-                modifier = Modifier.clickable { onNavigateToEqualizer() }
             )
             HorizontalDivider()
 

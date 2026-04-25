@@ -14,6 +14,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.0.6] - 2026-04-25
+
+### Added
+- Added Android Auto settings and improved theme/appearance persistence across launches.
+- Added `Add to Playlist` and playlist detail workflows to simplify queue management.
+- Removed equalizer feature — not working on all devices.
+- Updated `app` version to `0.0.6` and `versionCode` to `6`.
+
+---
+
 ## [0.0.5] - 2026-04-25
 
 ### Added

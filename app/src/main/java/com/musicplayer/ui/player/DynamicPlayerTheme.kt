@@ -7,6 +7,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
+import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.*
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
@@ -37,45 +38,68 @@ data class ArtworkColors(
  * current [MaterialTheme.colorScheme] when no artwork colours are available.
  */
 @Composable
-fun artworkColorScheme(artworkColors: ArtworkColors): ColorScheme {
+fun artworkColorScheme(artworkColors: ArtworkColors, isDark: Boolean = true): ColorScheme {
     val fallback = MaterialTheme.colorScheme
 
     if (artworkColors.isDefault) return fallback
 
     val primary = artworkColors.vibrant.ifUnspecified(artworkColors.dominant)
-    val surface = artworkColors.darkMuted.ifUnspecified(artworkColors.dominant.darken(0.7f))
-    val onSurface = if (surface.luminance() > 0.5f) Color.Black else Color.White
-    val onPrimary = if (primary.luminance() > 0.5f) Color.Black else Color.White
-    val surfaceVariant = artworkColors.muted.ifUnspecified(surface.lighten(0.15f))
+    
+    return if (isDark) {
+        val surface = artworkColors.darkMuted.ifUnspecified(artworkColors.dominant.darken(0.7f))
+        val onSurface = if (surface.luminance() > 0.5f) Color.Black else Color.White
+        val onPrimary = if (primary.luminance() > 0.5f) Color.Black else Color.White
+        val surfaceVariant = artworkColors.muted.ifUnspecified(surface.lighten(0.15f))
 
-    // Animate every slot so track changes feel smooth
-    fun anim(target: Color) = target // will be animated via wrapper below
+        darkColorScheme(
+            primary = primary,
+            onPrimary = onPrimary,
+            primaryContainer = primary.darken(0.3f),
+            onPrimaryContainer = onPrimary,
+            secondary = artworkColors.muted.ifUnspecified(primary),
+            onSecondary = onPrimary,
+            tertiary = artworkColors.lightVibrant.ifUnspecified(primary.lighten(0.2f)),
+            background = surface,
+            onBackground = onSurface,
+            surface = surface,
+            onSurface = onSurface,
+            surfaceVariant = surfaceVariant,
+            onSurfaceVariant = onSurface.copy(alpha = 0.7f),
+            inverseSurface = onSurface,
+            inverseOnSurface = surface
+        )
+    } else {
+        val surface = artworkColors.lightVibrant.ifUnspecified(artworkColors.dominant.lighten(0.9f))
+        val onSurface = if (surface.luminance() > 0.5f) Color.Black else Color.White
+        val onPrimary = if (primary.luminance() > 0.5f) Color.Black else Color.White
+        val surfaceVariant = artworkColors.muted.ifUnspecified(surface.darken(0.1f))
 
-    return darkColorScheme(
-        primary = primary,
-        onPrimary = onPrimary,
-        primaryContainer = primary.darken(0.3f),
-        onPrimaryContainer = onPrimary,
-        secondary = artworkColors.muted.ifUnspecified(primary),
-        onSecondary = onPrimary,
-        tertiary = artworkColors.lightVibrant.ifUnspecified(primary.lighten(0.2f)),
-        background = surface,
-        onBackground = onSurface,
-        surface = surface,
-        onSurface = onSurface,
-        surfaceVariant = surfaceVariant,
-        onSurfaceVariant = onSurface.copy(alpha = 0.7f),
-        inverseSurface = onSurface,
-        inverseOnSurface = surface
-    )
+        lightColorScheme(
+            primary = primary,
+            onPrimary = onPrimary,
+            primaryContainer = primary.lighten(0.7f),
+            onPrimaryContainer = Color.Black,
+            secondary = artworkColors.muted.ifUnspecified(primary),
+            onSecondary = onPrimary,
+            tertiary = artworkColors.darkMuted.ifUnspecified(primary.darken(0.2f)),
+            background = surface,
+            onBackground = onSurface,
+            surface = surface,
+            onSurface = onSurface,
+            surfaceVariant = surfaceVariant,
+            onSurfaceVariant = onSurface.copy(alpha = 0.7f),
+            inverseSurface = Color.Black,
+            inverseOnSurface = Color.White
+        )
+    }
 }
 
 /**
  * Wraps [artworkColorScheme] with smooth cross-fade animation on each color slot.
  */
 @Composable
-fun animatedArtworkColorScheme(artworkColors: ArtworkColors): ColorScheme {
-    val base = artworkColorScheme(artworkColors)
+fun animatedArtworkColorScheme(artworkColors: ArtworkColors, isDark: Boolean = true): ColorScheme {
+    val base = artworkColorScheme(artworkColors, isDark)
     val duration = 800
     return base.copy(
         primary = animateColorAsState(base.primary, tween(duration), label = "primary").value,

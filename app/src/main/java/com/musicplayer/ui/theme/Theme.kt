@@ -15,6 +15,8 @@ import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
+import com.musicplayer.ui.player.animatedArtworkColorScheme
+import com.musicplayer.ui.player.rememberArtworkColors
 
 private val DarkColorScheme = darkColorScheme(
     primary = Color(0xFF6750A4),
@@ -42,6 +44,7 @@ private val LightColorScheme = lightColorScheme(
 fun MusicPlayerTheme(
     themeMode: String = "system",
     dynamicColor: Boolean = true,
+    artworkUri: String? = null,
     content: @Composable () -> Unit
 ) {
     val darkTheme = when (themeMode) {
@@ -50,7 +53,13 @@ fun MusicPlayerTheme(
         else -> isSystemInDarkTheme()
     }
 
+    val artworkColors = rememberArtworkColors(artworkUri)
+    val artworkScheme = if (dynamicColor && !artworkColors.isDefault) {
+        animatedArtworkColorScheme(artworkColors, isDark = darkTheme)
+    } else null
+
     val colorScheme = when {
+        artworkScheme != null -> artworkScheme
         dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
             val context = LocalContext.current
             if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
@@ -64,7 +73,8 @@ fun MusicPlayerTheme(
         SideEffect {
             val window = (view.context as Activity).window
             window.statusBarColor = colorScheme.primary.toArgb()
-            WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = !darkTheme
+            WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = 
+                if (artworkScheme != null) false else !darkTheme
         }
     }
 

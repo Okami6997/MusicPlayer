@@ -37,7 +37,8 @@ class MainActivity : ComponentActivity() {
             navController = controller
             MusicPlayerTheme(
                 themeMode = uiState.themeMode,
-                dynamicColor = uiState.dynamicColorEnabled
+                dynamicColor = uiState.dynamicColorEnabled,
+                artworkUri = uiState.currentArtworkUri
             ) {
                 MusicPlayerNavGraph(navController = controller)
             }

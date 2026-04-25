@@ -1,6 +1,5 @@
 package com.musicplayer.ui.player
 
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -26,7 +25,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
-import coil.compose.rememberAsyncImagePainter
 import com.musicplayer.domain.model.Lyrics
 import com.musicplayer.domain.model.PlayerState
 import com.musicplayer.domain.model.RepeatMode
@@ -35,123 +33,119 @@ import com.musicplayer.domain.model.RepeatMode
 @Composable
 fun PlayerScreen(
     onNavigateBack: () -> Unit,
-    viewModel: PlayerViewModel = hiltViewModel()
+    viewModel: PlayerViewModel = hiltViewModel(),
+    settingsViewModel: com.musicplayer.ui.settings.SettingsViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val settingsState by settingsViewModel.uiState.collectAsState()
     val track = uiState.currentTrack
 
-    // ── dynamic theme from album artwork ─────────────────────────────────
-    val artworkColors = rememberArtworkColors(track?.artworkUri)
-    val dynamicScheme = animatedArtworkColorScheme(artworkColors)
+    var showPlaylistDialog by remember { mutableStateOf(false) }
+    val playlists by viewModel.getAllPlaylists().collectAsState(initial = emptyList())
 
-    MaterialTheme(colorScheme = dynamicScheme) {
-        var showPlaylistDialog by remember { mutableStateOf(false) }
-        val playlists by viewModel.getAllPlaylists().collectAsState(initial = emptyList())
+    if (showPlaylistDialog && track != null) {
+        com.musicplayer.ui.components.AddToPlaylistDialog(
+            track = track,
+            playlists = playlists,
+            onDismiss = { showPlaylistDialog = false },
+            onPlaylistSelected = { playlist ->
+                viewModel.addCurrentTrackToPlaylist(playlist.id)
+            },
+            onCreatePlaylist = { name ->
+                viewModel.createPlaylistAndAddCurrentTrack(name)
+            }
+        )
+    }
 
-        if (showPlaylistDialog && track != null) {
-            com.musicplayer.ui.components.AddToPlaylistDialog(
-                track = track,
-                playlists = playlists,
-                onDismiss = { showPlaylistDialog = false },
-                onPlaylistSelected = { playlist ->
-                    viewModel.addCurrentTrackToPlaylist(playlist.id)
-                },
-                onCreatePlaylist = { name ->
-                    viewModel.createPlaylistAndAddCurrentTrack(name)
-                }
+    Box(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
+        // ── blurred, faded album art background ──────────────────────
+        if (settingsState.dynamicColorEnabled && track?.artworkUri != null) {
+            AsyncImage(
+                model = track.artworkUri,
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .blur(60.dp, edgeTreatment = BlurredEdgeTreatment.Unbounded)
+            )
+            // Scrim: darken so controls remain readable
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(
+                        Brush.verticalGradient(
+                            colors = listOf(
+                                MaterialTheme.colorScheme.background.copy(alpha = 0.55f),
+                                MaterialTheme.colorScheme.background.copy(alpha = 0.85f)
+                            )
+                        )
+                    )
             )
         }
 
-        Box(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
-            // ── blurred, faded album art background ──────────────────────
-            if (track?.artworkUri != null) {
-                AsyncImage(
-                    model = track.artworkUri,
-                    contentDescription = null,
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .blur(60.dp, edgeTreatment = BlurredEdgeTreatment.Unbounded)
-                )
-                // Scrim: darken so controls remain readable
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .background(
-                            Brush.verticalGradient(
-                                colors = listOf(
-                                    MaterialTheme.colorScheme.background.copy(alpha = 0.55f),
-                                    MaterialTheme.colorScheme.background.copy(alpha = 0.85f)
-                                )
+        Scaffold(
+            containerColor = Color.Transparent,
+            contentColor = MaterialTheme.colorScheme.onSurface,
+            topBar = {
+                TopAppBar(
+                    title = { Text("Now Playing") },
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = Color.Transparent,
+                        titleContentColor = MaterialTheme.colorScheme.onSurface,
+                        navigationIconContentColor = MaterialTheme.colorScheme.onSurface,
+                        actionIconContentColor = MaterialTheme.colorScheme.onSurface
+                    ),
+                    navigationIcon = {
+                        IconButton(onClick = onNavigateBack) {
+                            Icon(Icons.Default.KeyboardArrowDown, contentDescription = "Back")
+                        }
+                    },
+                    actions = {
+                        IconButton(onClick = { viewModel.downloadCurrentTrack() }) {
+                            Icon(
+                                imageVector = if (track?.isDownloaded == true) Icons.Default.DownloadDone else Icons.Default.Download,
+                                contentDescription = "Download"
                             )
-                        )
-                )
-            }
-
-            Scaffold(
-                containerColor = Color.Transparent,
-                contentColor = MaterialTheme.colorScheme.onSurface,
-                topBar = {
-                    TopAppBar(
-                        title = { Text("Now Playing") },
-                        colors = TopAppBarDefaults.topAppBarColors(
-                            containerColor = Color.Transparent,
-                            titleContentColor = MaterialTheme.colorScheme.onSurface,
-                            navigationIconContentColor = MaterialTheme.colorScheme.onSurface,
-                            actionIconContentColor = MaterialTheme.colorScheme.onSurface
-                        ),
-                        navigationIcon = {
-                            IconButton(onClick = onNavigateBack) {
-                                Icon(Icons.Default.KeyboardArrowDown, contentDescription = "Back")
-                            }
-                        },
-                        actions = {
-                            IconButton(onClick = { viewModel.downloadCurrentTrack() }) {
+                        }
+                        IconButton(onClick = { showPlaylistDialog = true }) {
+                            Icon(Icons.AutoMirrored.Filled.PlaylistAdd, contentDescription = "Add to Playlist")
+                        }
+                        if (uiState.lyrics != null) {
+                            IconButton(onClick = { viewModel.toggleLyrics() }) {
                                 Icon(
-                                    imageVector = if (track?.isDownloaded == true) Icons.Default.DownloadDone else Icons.Default.Download,
-                                    contentDescription = "Download"
-                                )
-                            }
-                            IconButton(onClick = { showPlaylistDialog = true }) {
-                                Icon(Icons.AutoMirrored.Filled.PlaylistAdd, contentDescription = "Add to Playlist")
-                            }
-                            if (uiState.lyrics != null) {
-                                IconButton(onClick = { viewModel.toggleLyrics() }) {
-                                    Icon(
-                                        Icons.Default.Lyrics,
-                                        contentDescription = "Lyrics",
-                                        tint = if (uiState.showLyrics)
-                                            MaterialTheme.colorScheme.primary
-                                        else
-                                            MaterialTheme.colorScheme.onSurface
-                                    )
-                                }
-                            }
-                            IconButton(onClick = { viewModel.toggleQueue() }) {
-                                Icon(
-                                    imageVector = Icons.Default.QueueMusic,
-                                    contentDescription = "Queue",
-                                    tint = if (uiState.showQueue)
+                                    Icons.Default.Lyrics,
+                                    contentDescription = "Lyrics",
+                                    tint = if (uiState.showLyrics)
                                         MaterialTheme.colorScheme.primary
                                     else
                                         MaterialTheme.colorScheme.onSurface
                                 )
                             }
                         }
-                    )
-                }
-            ) { paddingValues ->
-                Box(modifier = Modifier.padding(paddingValues)) {
-                    PlayerContent(uiState, viewModel)
-                    
-                    if (uiState.showQueue) {
-                        QueueView(
-                            queue = uiState.queue,
-                            currentIndex = uiState.currentQueueIndex,
-                            onTrackClick = { index -> viewModel.playQueueIndex(index) },
-                            onDismiss = { viewModel.toggleQueue() }
-                        )
+                        IconButton(onClick = { viewModel.toggleQueue() }) {
+                            Icon(
+                                imageVector = Icons.Default.QueueMusic,
+                                contentDescription = "Queue",
+                                tint = if (uiState.showQueue)
+                                    MaterialTheme.colorScheme.primary
+                                else
+                                    MaterialTheme.colorScheme.onSurface
+                            )
+                        }
                     }
+                )
+            }
+        ) { paddingValues ->
+            Box(modifier = Modifier.padding(paddingValues)) {
+                PlayerContent(uiState, viewModel)
+                
+                if (uiState.showQueue) {
+                    QueueView(
+                        queue = uiState.queue,
+                        currentIndex = uiState.currentQueueIndex,
+                        onTrackClick = { index -> viewModel.playQueueIndex(index) },
+                        onDismiss = { viewModel.toggleQueue() }
+                    )
                 }
             }
         }

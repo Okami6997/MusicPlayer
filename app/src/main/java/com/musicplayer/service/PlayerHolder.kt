@@ -52,7 +52,6 @@ class PlayerHolder @Inject constructor(
     private val queueRepository: QueueRepository,
     private val okHttpClient: OkHttpClient,
     private val dataStore: DataStore<Preferences>,
-    private val equalizerManager: EqualizerManager,
 ) : SessionAvailabilityListener {
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
@@ -83,10 +82,6 @@ class PlayerHolder @Inject constructor(
                     }
                 }
             }
-        }
-
-        override fun onAudioSessionIdChanged(audioSessionId: Int) {
-            equalizerManager.onAudioSessionIdChanged(audioSessionId)
         }
     }
 
@@ -333,7 +328,6 @@ class PlayerHolder @Inject constructor(
 
     fun release() {
         if (wifiLock.isHeld) wifiLock.release()
-        equalizerManager.release()
         
         synchronized(this) {
             val oldExo = _exoPlayer

@@ -12,7 +12,6 @@ import javax.inject.Inject
 
 data class AudioSettingsUiState(
     val gaplessPlayback: Boolean = true,
-    val equalizerEnabled: Boolean = false,
     val crossfadeDurationMs: Int = 0
 )
 
@@ -21,16 +20,10 @@ class AudioSettingsViewModel @Inject constructor(
     private val dataStore: DataStore<Preferences>
 ) : ViewModel() {
 
-    companion object {
-        val KEY_GAPLESS_PLAYBACK = SettingsKeys.GAPLESS_PLAYBACK
-        val KEY_CROSSFADE_DURATION = SettingsKeys.CROSSFADE_DURATION
-    }
-
     val uiState: StateFlow<AudioSettingsUiState> = dataStore.data
         .map { prefs ->
             AudioSettingsUiState(
                 gaplessPlayback = prefs[SettingsKeys.GAPLESS_PLAYBACK] ?: true,
-                equalizerEnabled = prefs[SettingsKeys.EQUALIZER_ENABLED] ?: false,
                 crossfadeDurationMs = prefs[SettingsKeys.CROSSFADE_DURATION] ?: 0
             )
         }
@@ -39,12 +32,6 @@ class AudioSettingsViewModel @Inject constructor(
     fun setGaplessPlayback(enabled: Boolean) {
         viewModelScope.launch {
             dataStore.edit { it[SettingsKeys.GAPLESS_PLAYBACK] = enabled }
-        }
-    }
-
-    fun setEqualizerEnabled(enabled: Boolean) {
-        viewModelScope.launch {
-            dataStore.edit { it[SettingsKeys.EQUALIZER_ENABLED] = enabled }
         }
     }
 

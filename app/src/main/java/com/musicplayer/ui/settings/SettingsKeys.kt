@@ -9,8 +9,6 @@ object SettingsKeys {
     val THEME_MODE = stringPreferencesKey("theme_mode")
     val GAPLESS_PLAYBACK = booleanPreferencesKey("gapless_playback")
     val CROSSFADE_DURATION = intPreferencesKey("crossfade_duration")
-    val EQUALIZER_ENABLED = booleanPreferencesKey("equalizer_enabled")
-    val EQUALIZER_BANDS = stringPreferencesKey("equalizer_bands")
     
     val ANDROID_AUTO_ENABLED = booleanPreferencesKey("android_auto_enabled")
     val ANDROID_AUTO_AUTO_PLAY = booleanPreferencesKey("android_auto_auto_play")
