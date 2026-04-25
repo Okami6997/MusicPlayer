@@ -12,7 +12,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
@@ -34,12 +36,14 @@ fun TrackListItem(
                 text = track.title,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
+                style = MaterialTheme.typography.bodyLarge,
+                fontWeight = FontWeight.Medium,
                 color = if (track.isDownloaded) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
             )
         },
         supportingContent = {
             Text(
-                text = "${track.artist} • ${track.album}${if (track.sourceName.isNotEmpty()) " • ${track.sourceName}" else ""}",
+                text = "${track.artist} · ${track.album}${if (track.sourceName.isNotEmpty()) " · ${track.sourceName}" else ""}",
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
                 style = MaterialTheme.typography.bodySmall,
@@ -52,54 +56,63 @@ fun TrackListItem(
                     model = track.artworkUri,
                     contentDescription = "Album art",
                     modifier = Modifier
-                        .size(48.dp)
-                        .clip(MaterialTheme.shapes.small),
+                        .size(56.dp)
+                        .clip(MaterialTheme.shapes.medium),
                     contentScale = ContentScale.Crop
                 )
             } else {
-                Box(
+                Surface(
                     modifier = Modifier
-                        .size(48.dp)
-                        .clip(MaterialTheme.shapes.small),
-                    contentAlignment = Alignment.Center
+                        .size(56.dp)
+                        .clip(MaterialTheme.shapes.medium),
+                    color = MaterialTheme.colorScheme.surfaceVariant
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.MusicNote,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(
+                            imageVector = Icons.Default.MusicNote,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(24.dp)
+                        )
+                    }
                 }
             }
         },
         trailingContent = {
-            Row(verticalAlignment = Alignment.CenterVertically) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(2.dp)
+            ) {
                 Text(
                     text = track.duration.toFormattedDuration(),
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 if (onDownloadClick != null) {
-                    IconButton(onClick = onDownloadClick) {
+                    IconButton(onClick = onDownloadClick, modifier = Modifier.size(32.dp)) {
                         Icon(
                             imageVector = if (track.isDownloaded) Icons.Default.DownloadDone else Icons.Default.Download,
                             contentDescription = "Download",
-                            modifier = Modifier.size(20.dp),
+                            modifier = Modifier.size(18.dp),
                             tint = if (track.isDownloaded) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 }
                 if (onMoreClick != null) {
-                    IconButton(onClick = onMoreClick) {
+                    IconButton(onClick = onMoreClick, modifier = Modifier.size(32.dp)) {
                         Icon(
                             imageVector = Icons.Default.MoreVert,
                             contentDescription = "More",
-                            modifier = Modifier.size(20.dp),
+                            modifier = Modifier.size(18.dp),
                             tint = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 }
             }
-        }
+        },
+        colors = ListItemDefaults.colors(
+            containerColor = Color.Transparent
+        )
     )
 }
 

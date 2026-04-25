@@ -81,7 +81,7 @@ fun SearchScreen(
                             textFieldValue = it
                             viewModel.updateQuery(it.text)
                         },
-                        placeholder = { Text("Search tracks, artists, albums…") },
+                        placeholder = { Text("Search") },
                         singleLine = true,
                         colors = TextFieldDefaults.colors(
                             focusedContainerColor = MaterialTheme.colorScheme.surface,

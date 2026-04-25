@@ -14,6 +14,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.0.7] - 2026-04-25
+
+### Added
+- Polished UI for a minimalist yet modern look and feel — refined color schemes, typography hierarchy, TrackListItem, MiniPlayer, empty states, and all major screens.
+- Updated `app` version to `0.0.7` and `versionCode` to `7`.
+
+---
+
 ## [0.0.6] - 2026-04-25
 
 ### Added

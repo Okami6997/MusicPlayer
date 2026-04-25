@@ -10,6 +10,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
@@ -33,16 +34,16 @@ fun MiniPlayer(
         modifier = modifier
             .fillMaxWidth()
             .clickable(onClick = onExpand),
-        shadowElevation = 8.dp,
-        color = MaterialTheme.colorScheme.surfaceVariant
+        shadowElevation = 3.dp,
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.85f)
     ) {
         Row(
             modifier = Modifier
-                .padding(horizontal = 12.dp, vertical = 8.dp)
+                .padding(horizontal = 16.dp, vertical = 10.dp)
                 .fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            // Album art
             AsyncImage(
                 model = track.artworkUri,
                 contentDescription = "Album art",
@@ -52,14 +53,14 @@ fun MiniPlayer(
                 contentScale = ContentScale.Crop
             )
 
-            Spacer(modifier = Modifier.width(12.dp))
-
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = track.title,
                     style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Medium,
                     maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
+                    overflow = TextOverflow.Ellipsis,
+                    color = MaterialTheme.colorScheme.onSurface
                 )
                 Text(
                     text = track.artist,
@@ -74,14 +75,16 @@ fun MiniPlayer(
                 Icon(
                     imageVector = if (uiState.playerState == PlayerState.PLAYING)
                         Icons.Default.Pause else Icons.Default.PlayArrow,
-                    contentDescription = if (uiState.playerState == PlayerState.PLAYING) "Pause" else "Play"
+                    contentDescription = if (uiState.playerState == PlayerState.PLAYING) "Pause" else "Play",
+                    tint = MaterialTheme.colorScheme.onSurface
                 )
             }
 
             IconButton(onClick = onSkipNext) {
                 Icon(
                     imageVector = Icons.Default.SkipNext,
-                    contentDescription = "Skip next"
+                    contentDescription = "Skip next",
+                    tint = MaterialTheme.colorScheme.onSurface
                 )
             }
         }

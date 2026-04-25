@@ -2,9 +2,9 @@
 Music Player for all platforms
 
 ## Current release
-- v0.0.6 — added Android Auto settings, improved theme persistence, and removed non-functional equalizer
+- v0.0.7 — polished UI for a minimalist, modern look and feel across all screens
 
 ## Current progress
-- Implemented Android Auto settings and better theme persistence.
-- Continued improving playlist detail workflows and playback state persistence.
+- Refined color schemes, typography hierarchy, and component styling for a modern minimalist aesthetic.
+- Improved empty states, tab row styling, and playback control visuals.
 

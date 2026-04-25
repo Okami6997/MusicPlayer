@@ -117,9 +117,9 @@ fun HomeScreen(
                     item {
                         Text(
                             text = "Recently Added",
-                            style = MaterialTheme.typography.titleLarge,
-                            fontWeight = FontWeight.Bold,
-                            modifier = Modifier.padding(16.dp)
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.SemiBold,
+                            modifier = Modifier.padding(start = 16.dp, top = 20.dp, end = 16.dp, bottom = 8.dp)
                         )
                     }
                     items(uiState.recentTracks) { track ->
@@ -137,33 +137,41 @@ fun HomeScreen(
                             Column(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .padding(32.dp),
+                                    .padding(48.dp),
                                 horizontalAlignment = Alignment.CenterHorizontally
                             ) {
                                 Icon(
-                                    imageVector = Icons.Default.MusicNote,
+                                    imageVector = Icons.Default.LibraryMusic,
                                     contentDescription = null,
-                                    modifier = Modifier.size(64.dp),
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                    modifier = Modifier.size(56.dp),
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
                                 )
                                 Spacer(modifier = Modifier.height(16.dp))
                                 Text(
                                     text = "No music found",
-                                    style = MaterialTheme.typography.bodyLarge
+                                    style = MaterialTheme.typography.titleMedium,
+                                    color = MaterialTheme.colorScheme.onSurface
                                 )
-                                Spacer(modifier = Modifier.height(8.dp))
+                                Spacer(modifier = Modifier.height(4.dp))
                                 Text(
-                                    text = "Add a music source in Settings or scan your local library",
+                                    text = "Add a source in Settings or scan your local library",
                                     style = MaterialTheme.typography.bodyMedium,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    textAlign = androidx.compose.ui.text.style.TextAlign.Center
                                 )
-                                Spacer(modifier = Modifier.height(16.dp))
-                                Button(onClick = { checkAndScanLocal() }) {
+                                Spacer(modifier = Modifier.height(24.dp))
+                                Button(
+                                    onClick = { checkAndScanLocal() },
+                                    colors = ButtonDefaults.buttonColors(
+                                        containerColor = MaterialTheme.colorScheme.primary
+                                    )
+                                ) {
                                     Text("Scan Local Library")
                                 }
                             }
                         }
                     }
+                    item { Spacer(modifier = Modifier.height(80.dp)) }
                 }
 
                 MiniPlayer(

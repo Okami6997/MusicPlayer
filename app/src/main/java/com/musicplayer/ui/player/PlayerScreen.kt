@@ -161,37 +161,69 @@ private fun QueueView(
 ) {
     Surface(
         modifier = Modifier.fillMaxSize(),
-        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f)
+        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.97f)
     ) {
         Column(modifier = Modifier.fillMaxSize()) {
             Row(
-                modifier = Modifier.fillMaxWidth().padding(16.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 8.dp, vertical = 8.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text("Up Next", style = MaterialTheme.typography.titleLarge)
+                Text(
+                    "Up Next",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier.padding(horizontal = 8.dp)
+                )
                 IconButton(onClick = onDismiss) {
                     Icon(Icons.Default.Close, contentDescription = "Close queue")
                 }
             }
-            
+
+            HorizontalDivider()
+
             LazyColumn(modifier = Modifier.fillMaxSize()) {
                 itemsIndexed(queue) { index, track ->
                     val isPlaying = index == currentIndex
+                    val trackColor = if (isPlaying) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
                     ListItem(
                         modifier = Modifier.clickable { onTrackClick(index) },
-                        headlineContent = { 
+                        headlineContent = {
                             Text(
-                                track.title, 
-                                color = if (isPlaying) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
-                            ) 
+                                track.title,
+                                style = MaterialTheme.typography.bodyLarge,
+                                fontWeight = if (isPlaying) FontWeight.Medium else FontWeight.Normal,
+                                color = trackColor
+                            )
                         },
-                        supportingContent = { Text(track.artist) },
+                        supportingContent = {
+                            Text(
+                                track.artist,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        },
                         leadingContent = {
-                            if (isPlaying) {
-                                Icon(Icons.Default.PlayArrow, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-                            } else {
-                                Text("${index + 1}", style = MaterialTheme.typography.bodySmall)
+                            Box(
+                                modifier = Modifier.size(40.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                if (isPlaying) {
+                                    Icon(
+                                        Icons.Default.PlayArrow,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.primary,
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                } else {
+                                    Text(
+                                        "${index + 1}",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
                             }
                         }
                     )
@@ -337,7 +369,11 @@ private fun PlayerContent(
             // Play/Pause
             FilledIconButton(
                 onClick = { viewModel.togglePlayPause() },
-                modifier = Modifier.size(64.dp)
+                modifier = Modifier.size(64.dp),
+                colors = IconButtonDefaults.filledIconButtonColors(
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    contentColor = MaterialTheme.colorScheme.onPrimary
+                )
             ) {
                 Icon(
                     imageVector = if (uiState.playWhenReady && uiState.playerState != PlayerState.STOPPED)
@@ -374,8 +410,17 @@ private fun PlayerContent(
         if (uiState.castDevice != null) {
             AssistChip(
                 onClick = {},
-                label = { Text("Casting to ${uiState.castDevice}") },
-                leadingIcon = { Icon(Icons.Default.Cast, contentDescription = null) }
+                label = { Text("Casting to ${uiState.castDevice}", style = MaterialTheme.typography.labelMedium) },
+                leadingIcon = {
+                    Icon(
+                        Icons.Default.Cast,
+                        contentDescription = null,
+                        modifier = Modifier.size(16.dp)
+                    )
+                },
+                colors = AssistChipDefaults.assistChipColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant
+                )
             )
         }
     }
