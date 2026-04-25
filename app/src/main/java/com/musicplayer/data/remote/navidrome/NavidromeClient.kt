@@ -79,6 +79,7 @@ class NavidromeClient @Inject constructor(
                 subsonicClient.buildCoverArtUrl(source.baseUrl, it, source.username, source.password)
             },
             sourceId = source.id,
+            sourceName = source.name,
             sourceType = source.type,
             bitrate = bitRate ?: 0,
             sampleRate = sampleRate ?: 0,

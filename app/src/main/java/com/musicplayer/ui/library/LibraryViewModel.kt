@@ -3,6 +3,7 @@ package com.musicplayer.ui.library
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.musicplayer.data.repository.MusicRepository
+import com.musicplayer.data.repository.DownloadRepository
 import com.musicplayer.domain.model.Album
 import com.musicplayer.domain.model.Artist
 import com.musicplayer.domain.model.Playlist
@@ -10,6 +11,7 @@ import com.musicplayer.domain.model.Track
 import com.musicplayer.service.PlayerHolder
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 data class LibraryUiState(
@@ -23,7 +25,8 @@ data class LibraryUiState(
 @HiltViewModel
 class LibraryViewModel @Inject constructor(
     private val repository: MusicRepository,
-    private val playerHolder: PlayerHolder
+    private val playerHolder: PlayerHolder,
+    private val downloadRepository: DownloadRepository
 ) : ViewModel() {
 
     val uiState: StateFlow<LibraryUiState> = repository.getAllTracks()
@@ -39,6 +42,7 @@ class LibraryViewModel @Inject constructor(
                         artworkUri = first.artworkUri,
                         trackCount = albumTracks.size,
                         sourceId = first.sourceId,
+                        sourceName = first.sourceName,
                         sourceType = first.sourceType
                     )
                 }.sortedBy { it.title }
@@ -71,5 +75,27 @@ class LibraryViewModel @Inject constructor(
         val tracks = uiState.value.tracks
         val index = tracks.indexOf(track).coerceAtLeast(0)
         playerHolder.playTracks(tracks, index)
+    }
+
+    fun downloadTrack(track: Track) {
+        viewModelScope.launch {
+            downloadRepository.downloadTrack(track)
+        }
+    }
+
+    fun downloadAlbum(album: Album) {
+        viewModelScope.launch {
+            downloadRepository.downloadAlbum(album.id)
+        }
+    }
+
+    fun scanLocalLibrary() {
+        viewModelScope.launch {
+            try {
+                repository.scanLocalLibrary()
+            } catch (e: Exception) {
+                // Ignore
+            }
+        }
     }
 }

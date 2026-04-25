@@ -56,23 +56,6 @@ private fun Track.toMediaItem(): MediaItem =
         .build()
 
 /**
- * Custom session commands exposed to media controllers and notification actions.
- */
-enum class CustomCommands(val customAction: String) {
-    TOGGLE_SLEEP_TIMER("com.musicplayer.ACTION_TOGGLE_SLEEP_TIMER"),
-    CLOSE_PLAYER("com.musicplayer.ACTION_CLOSE_PLAYER");
-
-    val sessionCommand: SessionCommand
-        get() = SessionCommand(customAction, Bundle.EMPTY)
-
-    companion object {
-        private val values = entries
-        fun fromSessionCommand(command: SessionCommand): CustomCommands? =
-            values.find { it.customAction == command.customAction }
-    }
-}
-
-/**
  * Long-running foreground service that owns the [MediaLibrarySession].
  */
 @OptIn(UnstableApi::class)
@@ -191,16 +174,14 @@ class MusicPlaybackService : MediaLibraryService() {
 
     override fun onGetSession(controllerInfo: MediaSession.ControllerInfo) = mediaSession
 
+    override fun onUpdateNotification(session: MediaSession, startInForegroundRequired: Boolean) {
+        // By passing true for startInForegroundRequired, we keep the service in the
+        // foreground even when paused, making the notification persistent.
+        super.onUpdateNotification(session, true)
+    }
+
     override fun onTaskRemoved(rootIntent: Intent?) {
         Timber.d("onTaskRemoved called — rootIntent=$rootIntent")
-        withPlayer {
-            if (isPlaying) {
-                Timber.d("Media is playing — keeping service alive")
-            } else {
-                Timber.d("Media not playing — stopping self")
-                stopSelf()
-            }
-        }
         super.onTaskRemoved(rootIntent)
     }
 
@@ -229,11 +210,6 @@ class MusicPlaybackService : MediaLibraryService() {
         stopSelf()
     }
 
-    private fun toggleSleepTimer() {
-        // TODO: Implement sleep timer logic
-        Timber.i("Sleep timer toggled (not yet implemented)")
-    }
-
     private inner class SessionCallback : MediaLibrarySession.Callback {
 
         override fun onConnect(
@@ -241,24 +217,21 @@ class MusicPlaybackService : MediaLibraryService() {
             controller: MediaSession.ControllerInfo
         ): MediaSession.ConnectionResult {
             val result = super.onConnect(session, controller)
-            val sessionCommands = result.availableSessionCommands.buildUpon()
-            CustomCommands.entries.forEach { sessionCommands.add(it.sessionCommand) }
 
-            // Ensure player commands like Shuffle and Repeat are available to the controller/notification
             val playerCommands = result.availablePlayerCommands.buildUpon()
                 .add(Player.COMMAND_SET_SHUFFLE_MODE)
                 .add(Player.COMMAND_SET_REPEAT_MODE)
                 .build()
 
             return MediaSession.ConnectionResult.AcceptedResultBuilder(session)
-                .setAvailableSessionCommands(sessionCommands.build())
                 .setAvailablePlayerCommands(playerCommands)
+                .setCustomLayout(getCustomLayout())
                 .build()
         }
 
         override fun onPostConnect(session: MediaSession, controller: MediaSession.ControllerInfo) {
             val customLayout = getCustomLayout()
-            if (customLayout.isNotEmpty() && controller.controllerVersion != 0) {
+            if (customLayout.isNotEmpty()) {
                 mediaSession?.setCustomLayout(controller, customLayout)
             }
         }
@@ -269,12 +242,6 @@ class MusicPlaybackService : MediaLibraryService() {
             customCommand: SessionCommand,
             args: Bundle
         ): ListenableFuture<SessionResult> {
-            val command = CustomCommands.fromSessionCommand(customCommand)
-            when (command) {
-                CustomCommands.TOGGLE_SLEEP_TIMER -> toggleSleepTimer()
-                CustomCommands.CLOSE_PLAYER -> stopService()
-                null -> { /* unknown command */ }
-            }
             return Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))
         }
 
@@ -396,27 +363,6 @@ class MusicPlaybackService : MediaLibraryService() {
     }
 
     private fun getCustomLayout(): ImmutableList<CommandButton> {
-        return ImmutableList.of(
-            CommandButton.Builder()
-                .setPlayerCommand(Player.COMMAND_SET_SHUFFLE_MODE)
-                .setIconResId(android.R.drawable.ic_menu_directions) // Placeholder icon
-                .setDisplayName("Shuffle")
-                .build(),
-            CommandButton.Builder()
-                .setPlayerCommand(Player.COMMAND_SET_REPEAT_MODE)
-                .setIconResId(android.R.drawable.ic_menu_revert) // Placeholder icon
-                .setDisplayName("Repeat")
-                .build(),
-            CommandButton.Builder()
-                .setSessionCommand(CustomCommands.TOGGLE_SLEEP_TIMER.sessionCommand)
-                .setIconResId(android.R.drawable.ic_menu_agenda)
-                .setDisplayName("Sleep Timer")
-                .build(),
-            CommandButton.Builder()
-                .setSessionCommand(CustomCommands.CLOSE_PLAYER.sessionCommand)
-                .setIconResId(android.R.drawable.ic_menu_close_clear_cancel)
-                .setDisplayName("Close")
-                .build()
-        )
+        return ImmutableList.of()
     }
 }

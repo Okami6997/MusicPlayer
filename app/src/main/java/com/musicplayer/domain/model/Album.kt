@@ -8,6 +8,7 @@ data class Album(
     val trackCount: Int = 0,
     val artworkUri: String? = null,
     val sourceId: String,
+    val sourceName: String = "",
     val sourceType: MediaSourceType,
     val genres: List<String> = emptyList()
 )

@@ -102,6 +102,7 @@ class PlexClient @Inject constructor() {
             uri = buildStreamUrl(source.baseUrl, partKey, source.token),
             artworkUri = artworkUri,
             sourceId = source.id,
+            sourceName = source.name,
             sourceType = source.type,
             bitrate = mediaInfo?.bitrate ?: 0,
             fileSize = mediaInfo?.parts?.firstOrNull()?.size ?: 0L,

@@ -102,6 +102,7 @@ class JellyfinClient @Inject constructor() {
             uri = buildStreamUrl(source.baseUrl, id, source.token),
             artworkUri = artworkUri,
             sourceId = source.id,
+            sourceName = source.name,
             sourceType = source.type,
             bitrate = mediaSource?.bitrate ?: 0,
             fileSize = mediaSource?.size ?: 0L,

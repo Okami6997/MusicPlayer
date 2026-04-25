@@ -12,6 +12,7 @@ import com.musicplayer.domain.model.PlayerUiState
 import com.musicplayer.domain.model.RepeatMode
 import com.musicplayer.domain.model.Track
 import com.musicplayer.service.PlayerHolder
+import com.musicplayer.data.repository.DownloadRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -27,7 +28,8 @@ import javax.inject.Inject
 @HiltViewModel
 class PlayerViewModel @Inject constructor(
     private val playerHolder: PlayerHolder,
-    private val lyricsLoader: LyricsLoader
+    private val lyricsLoader: LyricsLoader,
+    private val downloadRepository: DownloadRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(PlayerUiState())
@@ -220,6 +222,13 @@ class PlayerViewModel @Inject constructor(
                     else -> RepeatMode.OFF
                 }
             )
+        }
+    }
+
+    fun downloadCurrentTrack() {
+        val track = _uiState.value.currentTrack ?: return
+        viewModelScope.launch {
+            downloadRepository.downloadTrack(track)
         }
     }
 

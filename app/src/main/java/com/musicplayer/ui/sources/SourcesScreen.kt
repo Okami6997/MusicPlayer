@@ -1,5 +1,10 @@
 package com.musicplayer.ui.sources
 
+import android.Manifest
+import android.content.pm.PackageManager
+import android.os.Build
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -9,7 +14,9 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.core.content.ContextCompat
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.musicplayer.domain.model.MediaSource
 import com.musicplayer.domain.model.MediaSourceType
@@ -27,6 +34,67 @@ fun SourcesScreen(
     var sourceToEdit by remember { mutableStateOf<MediaSource?>(null) }
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
+    val context = LocalContext.current
+
+    val permissionsToRequest = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+        arrayOf(Manifest.permission.READ_MEDIA_AUDIO)
+    } else {
+        arrayOf(Manifest.permission.READ_EXTERNAL_STORAGE)
+    }
+
+    val permissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions()
+    ) { permissions ->
+        val granted = permissions.values.all { it }
+        if (granted) {
+            viewModel.scanLocalLibrary()
+        } else {
+            scope.launch {
+                snackbarHostState.showSnackbar("Storage permission is required to scan local music")
+            }
+        }
+    }
+
+    fun checkAndScanLocal() {
+        val allGranted = permissionsToRequest.all {
+            ContextCompat.checkSelfPermission(context, it) == PackageManager.PERMISSION_GRANTED
+        }
+        if (allGranted) {
+            viewModel.scanLocalLibrary()
+        } else {
+            permissionLauncher.launch(permissionsToRequest)
+        }
+    }
+
+    val sourcePermissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions()
+    ) { permissions ->
+        val granted = permissions.values.all { it }
+        if (granted) {
+            // Re-trigger scan for the local source - we don't have the source here easily without extra state
+            // but usually scanLocalLibrary() does the same thing for now.
+            viewModel.scanLocalLibrary()
+        } else {
+            scope.launch {
+                snackbarHostState.showSnackbar("Storage permission is required to scan local music")
+            }
+        }
+    }
+
+    fun checkAndScanSource(source: MediaSource) {
+        if (source.type == MediaSourceType.LOCAL) {
+            val allGranted = permissionsToRequest.all {
+                ContextCompat.checkSelfPermission(context, it) == PackageManager.PERMISSION_GRANTED
+            }
+            if (allGranted) {
+                viewModel.scanSource(source)
+            } else {
+                sourcePermissionLauncher.launch(permissionsToRequest)
+            }
+        } else {
+            viewModel.scanSource(source)
+        }
+    }
 
     LaunchedEffect(uiState.scanProgress) {
         if (uiState.scanProgress.isNotEmpty()) {
@@ -53,7 +121,7 @@ fun SourcesScreen(
                             strokeWidth = 2.dp
                         )
                     } else {
-                        IconButton(onClick = { viewModel.scanLocalLibrary() }) {
+                        IconButton(onClick = { checkAndScanLocal() }) {
                             Icon(Icons.Default.Refresh, contentDescription = "Scan Library")
                         }
                     }
@@ -76,7 +144,7 @@ fun SourcesScreen(
                         showEditDialog = true
                     },
                     onDelete = { viewModel.deleteSource(source.id) },
-                    onScan = { viewModel.scanSource(source) }
+                    onScan = { checkAndScanSource(source) }
                 )
                 HorizontalDivider()
             }

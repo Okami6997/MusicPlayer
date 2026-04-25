@@ -8,6 +8,8 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navDeepLink
 import com.musicplayer.ui.home.HomeScreen
 import com.musicplayer.ui.library.LibraryScreen
+import com.musicplayer.ui.library.AlbumDetailScreen
+import com.musicplayer.ui.library.ArtistDetailScreen
 import com.musicplayer.ui.player.PlayerScreen
 import com.musicplayer.ui.search.SearchScreen
 import com.musicplayer.ui.settings.AppearanceScreen
@@ -28,6 +30,12 @@ sealed class Screen(val route: String) {
     data object Audio : Screen("audio")
     data object Downloads : Screen("downloads")
     data object AndroidAuto : Screen("android_auto")
+    data object AlbumDetail : Screen("album_detail/{albumId}") {
+        fun createRoute(albumId: String) = "album_detail/$albumId"
+    }
+    data object ArtistDetail : Screen("artist_detail/{artistName}") {
+        fun createRoute(artistName: String) = "artist_detail/$artistName"
+    }
 }
 
 @Composable
@@ -48,6 +56,28 @@ fun MusicPlayerNavGraph(
         }
         composable(Screen.Library.route) {
             LibraryScreen(
+                onNavigateToPlayer = { navController.navigate(Screen.Player.route) },
+                onNavigateToAlbum = { albumId -> 
+                    navController.navigate(Screen.AlbumDetail.createRoute(albumId)) 
+                },
+                onNavigateToArtist = { artistName -> 
+                    navController.navigate(Screen.ArtistDetail.createRoute(artistName)) 
+                },
+                onNavigateBack = { navController.popBackStack() }
+            )
+        }
+        composable(Screen.AlbumDetail.route) { backStackEntry ->
+            val albumId = backStackEntry.arguments?.getString("albumId") ?: ""
+            AlbumDetailScreen(
+                albumId = albumId,
+                onNavigateToPlayer = { navController.navigate(Screen.Player.route) },
+                onNavigateBack = { navController.popBackStack() }
+            )
+        }
+        composable(Screen.ArtistDetail.route) { backStackEntry ->
+            val artistName = backStackEntry.arguments?.getString("artistName") ?: ""
+            ArtistDetailScreen(
+                artistName = artistName,
                 onNavigateToPlayer = { navController.navigate(Screen.Player.route) },
                 onNavigateBack = { navController.popBackStack() }
             )

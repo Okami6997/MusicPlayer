@@ -205,4 +205,14 @@ interface SubsonicApi {
         @Query("v") version: String = "1.16.1",
         @Query("c") client: String = "MusicPlayer"
     ): okhttp3.ResponseBody
+
+    @GET("rest/download")
+    suspend fun download(
+        @Query("id") id: String,
+        @Query("u") username: String,
+        @Query("t") token: String,
+        @Query("s") salt: String,
+        @Query("v") version: String = "1.16.1",
+        @Query("c") client: String = "MusicPlayer"
+    ): okhttp3.ResponseBody
 }

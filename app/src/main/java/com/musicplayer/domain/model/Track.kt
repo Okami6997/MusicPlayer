@@ -18,11 +18,13 @@ data class Track(
     val uri: String,              // content:// or http(s)://
     val artworkUri: String? = null,
     val sourceId: String,         // which MediaSource this belongs to
+    val sourceName: String = "",  // name of the source (e.g. "My Nas", "Local")
     val sourceType: MediaSourceType,
     val isDownloaded: Boolean = false,
     val downloadedUri: String? = null,
     val bitrate: Int = 0,
     val sampleRate: Int = 0,
     val fileSize: Long = 0L,
-    val codec: String = ""
+    val codec: String = "",
+    val extension: String = ""
 )

@@ -3,6 +3,8 @@ package com.musicplayer.ui.components
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Download
+import androidx.compose.material.icons.filled.DownloadDone
 import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
@@ -20,6 +22,7 @@ import java.util.concurrent.TimeUnit
 fun TrackListItem(
     track: Track,
     onClick: () -> Unit,
+    onDownloadClick: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     ListItem(
@@ -28,12 +31,13 @@ fun TrackListItem(
             Text(
                 text = track.title,
                 maxLines = 1,
-                overflow = TextOverflow.Ellipsis
+                overflow = TextOverflow.Ellipsis,
+                color = if (track.isDownloaded) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
             )
         },
         supportingContent = {
             Text(
-                text = "${track.artist} • ${track.album}",
+                text = "${track.artist} • ${track.album}${if (track.sourceName.isNotEmpty()) " • ${track.sourceName}" else ""}",
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
                 style = MaterialTheme.typography.bodySmall,
@@ -66,11 +70,23 @@ fun TrackListItem(
             }
         },
         trailingContent = {
-            Text(
-                text = track.duration.toFormattedDuration(),
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = track.duration.toFormattedDuration(),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                if (onDownloadClick != null) {
+                    IconButton(onClick = onDownloadClick) {
+                        Icon(
+                            imageVector = if (track.isDownloaded) Icons.Default.DownloadDone else Icons.Default.Download,
+                            contentDescription = "Download",
+                            modifier = Modifier.size(20.dp),
+                            tint = if (track.isDownloaded) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+            }
         }
     )
 }

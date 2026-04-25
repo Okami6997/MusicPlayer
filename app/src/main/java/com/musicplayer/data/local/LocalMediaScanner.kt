@@ -102,6 +102,7 @@ class LocalMediaScanner @Inject constructor(
                             uri = contentUri,
                             artworkUri = artworkUri,
                             sourceId = LOCAL_SOURCE_ID,
+                            sourceName = "Local Device",
                             sourceType = MediaSourceType.LOCAL,
                             fileSize = cursor.getLong(sizeCol),
                             bitrate = if (bitrateCol >= 0) cursor.getInt(bitrateCol) else 0

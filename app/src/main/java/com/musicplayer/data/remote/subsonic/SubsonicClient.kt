@@ -199,9 +199,11 @@ class SubsonicClient @Inject constructor() {
             uri = buildStreamUrl(source.baseUrl, id, source.username, source.password),
             artworkUri = coverArt?.let { buildCoverArtUrl(source.baseUrl, it, source.username, source.password) },
             sourceId = source.id,
+            sourceName = source.name,
             sourceType = source.type,
             bitrate = bitRate ?: 0,
-            fileSize = size ?: 0L
+            fileSize = size ?: 0L,
+            extension = suffix ?: ""
         )
     }
 
@@ -219,6 +221,11 @@ class SubsonicClient @Inject constructor() {
     fun buildStreamUrl(baseUrl: String, songId: String, u: String, p: String): String {
         val (t, s) = generateToken(p)
         return "${baseUrl.trimEnd('/')}/rest/stream?id=$songId&u=$u&t=$t&s=$s&v=1.16.1&c=MusicPlayer"
+    }
+
+    fun buildDownloadUrl(baseUrl: String, songId: String, u: String, p: String): String {
+        val (t, s) = generateToken(p)
+        return "${baseUrl.trimEnd('/')}/rest/download?id=$songId&u=$u&t=$t&s=$s&v=1.16.1&c=MusicPlayer"
     }
 
     fun buildCoverArtUrl(baseUrl: String, id: String, u: String, p: String): String {
@@ -303,8 +310,10 @@ class SubsonicClient @Inject constructor() {
             uri = buildStreamUrl(source.baseUrl, id, source.username, source.password),
             artworkUri = coverArt?.let { buildCoverArtUrl(source.baseUrl, it, source.username, source.password) },
             sourceId = source.id,
+            sourceName = source.name,
             sourceType = source.type,
-            bitrate = bitRate ?: 0
+            bitrate = bitRate ?: 0,
+            extension = suffix ?: ""
         )
     }
 }

@@ -3,6 +3,7 @@ package com.musicplayer.ui.home
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.musicplayer.data.repository.MusicRepository
+import com.musicplayer.data.repository.DownloadRepository
 import com.musicplayer.domain.model.Track
 import com.musicplayer.service.PlayerHolder
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -22,7 +23,8 @@ data class HomeUiState(
 @HiltViewModel
 class HomeViewModel @Inject constructor(
     private val repository: MusicRepository,
-    private val playerHolder: PlayerHolder
+    private val playerHolder: PlayerHolder,
+    private val downloadRepository: DownloadRepository
 ) : ViewModel() {
 
     val uiState: StateFlow<HomeUiState> = MutableStateFlow(HomeUiState()).also { state ->
@@ -49,6 +51,12 @@ class HomeViewModel @Inject constructor(
             } catch (e: Exception) {
                 // Scanning errors are non-fatal; permissions may not be granted yet
             }
+        }
+    }
+
+    fun downloadTrack(track: Track) {
+        viewModelScope.launch {
+            downloadRepository.downloadTrack(track)
         }
     }
 }

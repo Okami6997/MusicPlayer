@@ -88,6 +88,12 @@ fun PlayerScreen(
                             }
                         },
                         actions = {
+                            IconButton(onClick = { viewModel.downloadCurrentTrack() }) {
+                                Icon(
+                                    imageVector = if (track?.isDownloaded == true) Icons.Default.DownloadDone else Icons.Default.Download,
+                                    contentDescription = "Download"
+                                )
+                            }
                             if (uiState.lyrics != null) {
                                 IconButton(onClick = { viewModel.toggleLyrics() }) {
                                     Icon(
@@ -187,6 +193,15 @@ private fun PlayerContent(
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
+            if (track?.sourceName?.isNotEmpty() == true) {
+                Text(
+                    text = track.sourceName,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.primary,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
         }
 
         Spacer(modifier = Modifier.height(24.dp))

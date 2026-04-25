@@ -1,6 +1,7 @@
 package com.musicplayer.ui.settings
 
 import android.content.Context
+import android.net.Uri
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
@@ -19,7 +20,7 @@ import javax.inject.Inject
 
 data class DownloadsUiState(
     val downloadLocation: String = "",
-    val downloadQuality: String = "High (320 kbps)",
+    val downloadQuality: String = "Lossless",
     val storageUsed: String = "0 MB"
 )
 
@@ -39,13 +40,25 @@ class DownloadsViewModel @Inject constructor(
     val uiState: StateFlow<DownloadsUiState> = dataStore.data
         .map { prefs ->
             val cacheSize = getCacheSize()
+            val location = prefs[KEY_DOWNLOAD_LOCATION] ?: "Default (App internal)"
+            val displayLocation = if (location.startsWith("content://")) {
+                Uri.parse(location).path?.split(":")?.lastOrNull() ?: "Custom Folder"
+            } else {
+                location
+            }
             DownloadsUiState(
-                downloadLocation = prefs[KEY_DOWNLOAD_LOCATION] ?: "Internal storage",
-                downloadQuality = prefs[KEY_DOWNLOAD_QUALITY] ?: "High (320 kbps)",
+                downloadLocation = displayLocation,
+                downloadQuality = prefs[KEY_DOWNLOAD_QUALITY] ?: "Lossless",
                 storageUsed = cacheSize
             )
         }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), DownloadsUiState())
+
+    fun setDownloadLocation(uri: String) {
+        viewModelScope.launch {
+            dataStore.edit { it[KEY_DOWNLOAD_LOCATION] = uri }
+        }
+    }
 
     fun setDownloadQuality(quality: String) {
         viewModelScope.launch {

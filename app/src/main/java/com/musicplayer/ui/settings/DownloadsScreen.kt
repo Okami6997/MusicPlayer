@@ -1,5 +1,8 @@
 package com.musicplayer.ui.settings
 
+import android.content.Intent
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
@@ -18,6 +21,18 @@ fun DownloadsScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     var showQualityDialog by remember { mutableStateOf(false) }
+
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val launcher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenDocumentTree()
+    ) { uri ->
+        uri?.let {
+            val takeFlags: Int = Intent.FLAG_GRANT_READ_URI_PERMISSION or
+                    Intent.FLAG_GRANT_WRITE_URI_PERMISSION
+            context.contentResolver.takePersistableUriPermission(it, takeFlags)
+            viewModel.setDownloadLocation(it.toString())
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -38,10 +53,10 @@ fun DownloadsScreen(
         ) {
             ListItem(
                 headlineContent = { Text("Download Location") },
-                supportingContent = { Text(uiState.downloadLocation.ifEmpty { "Internal storage" }) },
+                supportingContent = { Text(uiState.downloadLocation) },
                 leadingContent = { Icon(Icons.Default.Folder, contentDescription = null) },
                 trailingContent = { Icon(Icons.Default.ChevronRight, contentDescription = null) },
-                modifier = Modifier.clickable { viewModel.showDownloadLocationDialog = true }
+                modifier = Modifier.clickable { launcher.launch(null) }
             )
             HorizontalDivider()
 
@@ -77,7 +92,7 @@ fun DownloadsScreen(
             title = { Text("Download Quality") },
             text = {
                 Column {
-                    listOf("High (320 kbps)", "Medium (192 kbps)", "Low (128 kbps)").forEach { quality ->
+                    listOf("Lossless", "High (320 kbps)", "Medium (192 kbps)", "Low (128 kbps)").forEach { quality ->
                         ListItem(
                             headlineContent = { Text(quality) },
                             modifier = Modifier.clickable {

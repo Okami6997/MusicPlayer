@@ -25,13 +25,15 @@ fun Track.toEntity(): TrackEntity = TrackEntity(
     uri = uri,
     artworkUri = artworkUri,
     sourceId = sourceId,
+    sourceName = sourceName,
     sourceType = sourceType.name,
     isDownloaded = isDownloaded,
     downloadedUri = downloadedUri,
     bitrate = bitrate,
     sampleRate = sampleRate,
     fileSize = fileSize,
-    codec = codec
+    codec = codec,
+    extension = extension
 )
 
 fun TrackEntity.toDomain(): Track = Track(
@@ -49,13 +51,15 @@ fun TrackEntity.toDomain(): Track = Track(
     uri = uri,
     artworkUri = artworkUri,
     sourceId = sourceId,
+    sourceName = sourceName,
     sourceType = MediaSourceType.valueOf(sourceType),
     isDownloaded = isDownloaded,
     downloadedUri = downloadedUri,
     bitrate = bitrate,
     sampleRate = sampleRate,
     fileSize = fileSize,
-    codec = codec
+    codec = codec,
+    extension = extension
 )
 
 // ── MediaSource ───────────────────────────────────────────────────────────────

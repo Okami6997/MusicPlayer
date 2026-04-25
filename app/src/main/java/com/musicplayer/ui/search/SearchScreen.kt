@@ -110,10 +110,14 @@ fun SearchScreen(
             } else {
                 LazyColumn {
                     items(uiState.results) { track ->
-                        TrackListItem(track = track, onClick = {
-                            viewModel.playTrack(track)
-                            onNavigateToPlayer()
-                        })
+                        TrackListItem(
+                            track = track,
+                            onClick = {
+                                viewModel.playTrack(track)
+                                onNavigateToPlayer()
+                            },
+                            onDownloadClick = { viewModel.downloadTrack(track) }
+                        )
                     }
                 }
             }

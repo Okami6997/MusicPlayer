@@ -3,12 +3,14 @@ package com.musicplayer.ui.search
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.musicplayer.data.repository.MusicRepository
+import com.musicplayer.data.repository.DownloadRepository
 import com.musicplayer.domain.model.Track
 import com.musicplayer.service.PlayerHolder
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 data class SearchUiState(
@@ -21,7 +23,8 @@ data class SearchUiState(
 @HiltViewModel
 class SearchViewModel @Inject constructor(
     private val repository: MusicRepository,
-    private val playerHolder: PlayerHolder
+    private val playerHolder: PlayerHolder,
+    private val downloadRepository: DownloadRepository
 ) : ViewModel() {
 
     private val _query = MutableStateFlow("")
@@ -64,5 +67,11 @@ class SearchViewModel @Inject constructor(
         val results = _searchResults.value
         val index = results.indexOf(track).coerceAtLeast(0)
         playerHolder.playTracks(results, index)
+    }
+
+    fun downloadTrack(track: Track) {
+        viewModelScope.launch {
+            downloadRepository.downloadTrack(track)
+        }
     }
 }

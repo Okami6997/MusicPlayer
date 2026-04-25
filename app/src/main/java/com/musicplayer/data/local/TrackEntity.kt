@@ -19,11 +19,13 @@ data class TrackEntity(
     val uri: String,
     val artworkUri: String?,
     val sourceId: String,
+    val sourceName: String,
     val sourceType: String,
     val isDownloaded: Boolean,
     val downloadedUri: String?,
     val bitrate: Int,
     val sampleRate: Int,
     val fileSize: Long,
-    val codec: String
+    val codec: String,
+    val extension: String
 )

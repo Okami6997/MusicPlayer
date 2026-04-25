@@ -14,6 +14,8 @@ import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
+import androidx.media3.common.util.UnstableApi
+import androidx.media3.datasource.DefaultDataSource
 import androidx.media3.datasource.okhttp.OkHttpDataSource
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
@@ -38,6 +40,7 @@ import javax.inject.Singleton
  * Manages the active [Player] instance, switching between [ExoPlayer] (local/network)
  * and [CastPlayer] (Chromecast) transparently.
  */
+@UnstableApi
 @Singleton
 class PlayerHolder @Inject constructor(
     @ApplicationContext private val context: Context,
@@ -78,7 +81,8 @@ class PlayerHolder @Inject constructor(
 
     private fun createExoPlayer(): ExoPlayer {
         Timber.d("Creating new ExoPlayer instance")
-        val dataSourceFactory = OkHttpDataSource.Factory(okHttpClient)
+        val httpDataSourceFactory = OkHttpDataSource.Factory(okHttpClient)
+        val dataSourceFactory = DefaultDataSource.Factory(context, httpDataSourceFactory)
         val player = ExoPlayer.Builder(context)
             .setMediaSourceFactory(
                 DefaultMediaSourceFactory(context)
@@ -174,9 +178,14 @@ class PlayerHolder @Inject constructor(
         context.startService(Intent(context, MusicPlaybackService::class.java))
 
         val mediaItems = tracks.map { track ->
+            val uri = if (track.isDownloaded && track.downloadedUri != null) {
+                Uri.parse(track.downloadedUri)
+            } else {
+                Uri.parse(track.uri)
+            }
             MediaItem.Builder()
                 .setMediaId(track.id)
-                .setUri(track.uri)
+                .setUri(uri)
                 .setMediaMetadata(
                     androidx.media3.common.MediaMetadata.Builder()
                         .setTitle(track.title)
