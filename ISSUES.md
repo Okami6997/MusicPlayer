@@ -1,7 +1,7 @@
 # Known Issues & Planned Work
 
 This document tracks confirmed bugs, missing features, and planned improvements.
-For individual bug reports please open a [GitHub Issue](../../issues).
+For individual bug reports, please open a GitHub issue on the repository and reference this document.
 
 ---
 

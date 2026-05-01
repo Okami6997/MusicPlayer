@@ -21,6 +21,13 @@ MusicPlayer/
 └── CODEBASE-KNOWLEDGE.md       # ← you are here
 ```
 
+## Modules
+
+- `app` — phone/tablet application with full playback and library features
+- `wear` — Wear OS companion app for remote playback control
+- `tv` — Android TV application with larger-screen browsing support
+- `auto` — Android Auto Car App for in-car media browsing and playback
+
 ---
 
 ## Technology Stack
