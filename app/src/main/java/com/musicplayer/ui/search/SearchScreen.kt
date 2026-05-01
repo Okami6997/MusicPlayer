@@ -20,15 +20,19 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.musicplayer.domain.model.Track
 import com.musicplayer.ui.components.AddToPlaylistDialog
 import com.musicplayer.ui.components.TrackListItem
+import com.musicplayer.ui.components.MiniPlayer
+import com.musicplayer.ui.player.PlayerViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SearchScreen(
     onNavigateToPlayer: () -> Unit,
     onNavigateBack: () -> Unit,
-    viewModel: SearchViewModel = hiltViewModel()
+    viewModel: SearchViewModel = hiltViewModel(),
+    playerViewModel: PlayerViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val playerUiState by playerViewModel.uiState.collectAsState()
     val playlists by viewModel.getAllPlaylists().collectAsState(initial = emptyList())
     var trackToAddToPlaylist by remember { mutableStateOf<Track?>(null) }
     val focusRequester = remember { FocusRequester() }
@@ -107,7 +111,11 @@ fun SearchScreen(
             )
         }
     ) { paddingValues ->
-        Column(modifier = Modifier.fillMaxSize().padding(paddingValues)) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues)
+        ) {
             if (uiState.isLoading) {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     CircularProgressIndicator()
@@ -126,7 +134,7 @@ fun SearchScreen(
                     Text("No results for \"${textFieldValue.text}\"")
                 }
             } else {
-                LazyColumn {
+                LazyColumn(modifier = Modifier.weight(1f)) {
                     items(uiState.results) { track ->
                         TrackListItem(
                             track = track,
@@ -140,6 +148,13 @@ fun SearchScreen(
                     }
                 }
             }
+
+            MiniPlayer(
+                uiState = playerUiState,
+                onExpand = onNavigateToPlayer,
+                onPlayPause = { playerViewModel.togglePlayPause() },
+                onSkipNext = { playerViewModel.skipToNext() }
+            )
         }
     }
 }

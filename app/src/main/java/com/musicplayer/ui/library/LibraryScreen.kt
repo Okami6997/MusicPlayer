@@ -29,6 +29,8 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.musicplayer.domain.model.Track
 import com.musicplayer.ui.components.AddToPlaylistDialog
 import com.musicplayer.ui.components.TrackListItem
+import com.musicplayer.ui.components.MiniPlayer
+import com.musicplayer.ui.player.PlayerViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -38,9 +40,11 @@ fun LibraryScreen(
     onNavigateToArtist: (String) -> Unit,
     onNavigateToPlaylist: (String) -> Unit,
     onNavigateBack: () -> Unit,
-    viewModel: LibraryViewModel = hiltViewModel()
+    viewModel: LibraryViewModel = hiltViewModel(),
+    playerViewModel: PlayerViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val playerUiState by playerViewModel.uiState.collectAsState()
     var selectedTab by remember { mutableIntStateOf(0) }
     val tabs = listOf("Tracks", "Albums", "Artists", "Playlists")
     val context = LocalContext.current
@@ -141,7 +145,11 @@ fun LibraryScreen(
             }
         }
     ) { paddingValues ->
-        Column(modifier = Modifier.fillMaxSize().padding(paddingValues)) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues)
+        ) {
             TabRow(
                 selectedTabIndex = selectedTab,
                 containerColor = MaterialTheme.colorScheme.surface,
@@ -169,7 +177,7 @@ fun LibraryScreen(
                     if (uiState.tracks.isEmpty()) {
                         EmptyLibraryState(onScanClick = { checkAndScanLocal() })
                     } else {
-                        LazyColumn {
+                        LazyColumn(modifier = Modifier.weight(1f)) {
                             items(uiState.tracks) { track ->
                                 TrackListItem(
                                     track = track,
@@ -188,7 +196,7 @@ fun LibraryScreen(
                     if (uiState.albums.isEmpty()) {
                         EmptyLibraryState(onScanClick = { checkAndScanLocal() })
                     } else {
-                        LazyColumn {
+                        LazyColumn(modifier = Modifier.weight(1f)) {
                             items(uiState.albums) { album ->
                                 ListItem(
                                     modifier = Modifier.clickable { onNavigateToAlbum(album.id) },
@@ -208,7 +216,7 @@ fun LibraryScreen(
                     if (uiState.artists.isEmpty()) {
                         EmptyLibraryState(onScanClick = { checkAndScanLocal() })
                     } else {
-                        LazyColumn {
+                        LazyColumn(modifier = Modifier.weight(1f)) {
                             items(uiState.artists) { artist ->
                                 ListItem(
                                     modifier = Modifier.clickable { onNavigateToArtist(artist.name) },
@@ -223,7 +231,7 @@ fun LibraryScreen(
                     if (uiState.playlists.isEmpty()) {
                         EmptyLibraryState(onScanClick = { checkAndScanLocal() }, message = "No playlists found")
                     } else {
-                        LazyColumn {
+                        LazyColumn(modifier = Modifier.weight(1f)) {
                             items(uiState.playlists) { playlist ->
                                 ListItem(
                                     modifier = Modifier.clickable {
@@ -267,6 +275,13 @@ fun LibraryScreen(
                     }
                 }
             }
+
+            MiniPlayer(
+                uiState = playerUiState,
+                onExpand = onNavigateToPlayer,
+                onPlayPause = { playerViewModel.togglePlayPause() },
+                onSkipNext = { playerViewModel.skipToNext() }
+            )
         }
     }
 }

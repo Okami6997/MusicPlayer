@@ -12,8 +12,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - No notable changes documented yet.
 
+---
+
+## [0.0.8] - 2026-05-01
+
 ### Changed
-- No unreleased changes documented yet.
+- Updated `app` version to `0.0.8` and `versionCode` to `8`.
+- Polished navigation and UI interactions in Home, Library, Search, and Settings screens.
 
 ---
 

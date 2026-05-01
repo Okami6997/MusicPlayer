@@ -19,6 +19,8 @@ import com.musicplayer.ui.settings.AndroidAutoScreen
 import com.musicplayer.ui.settings.DownloadsScreen
 import com.musicplayer.ui.settings.SettingsScreen
 import com.musicplayer.ui.sources.SourcesScreen
+import androidx.hilt.navigation.compose.hiltViewModel
+import com.musicplayer.ui.player.PlayerViewModel
 
 sealed class Screen(val route: String) {
     data object Home : Screen("home")
@@ -59,18 +61,20 @@ fun MusicPlayerNavGraph(
             )
         }
         composable(Screen.Library.route) {
+            val playerViewModel: PlayerViewModel = hiltViewModel()
             LibraryScreen(
                 onNavigateToPlayer = { navController.navigate(Screen.Player.route) },
-                onNavigateToAlbum = { albumId -> 
-                    navController.navigate(Screen.AlbumDetail.createRoute(albumId)) 
+                onNavigateToAlbum = { albumId ->
+                    navController.navigate(Screen.AlbumDetail.createRoute(albumId))
                 },
-                onNavigateToArtist = { artistName -> 
-                    navController.navigate(Screen.ArtistDetail.createRoute(artistName)) 
+                onNavigateToArtist = { artistName ->
+                    navController.navigate(Screen.ArtistDetail.createRoute(artistName))
                 },
                 onNavigateToPlaylist = { playlistId ->
                     navController.navigate(Screen.PlaylistDetail.createRoute(playlistId))
                 },
-                onNavigateBack = { navController.popBackStack() }
+                onNavigateBack = { navController.popBackStack() },
+                playerViewModel = playerViewModel
             )
         }
         composable(Screen.AlbumDetail.route) { backStackEntry ->

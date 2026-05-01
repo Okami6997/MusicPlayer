@@ -8,7 +8,7 @@ Cross-platform Android music player for phone, Wear OS, TV, and Auto.
 - `auto` — Android Auto Car App
 
 ## Current release
-- v0.0.7 — polished UI for a minimalist, modern look and feel across all screens
+- v0.0.8 — incremental UI improvements, navigation polish, and bug fixes across key screens
 
 ## Current progress
 - Refined color schemes, typography hierarchy, and component styling for a modern minimalist aesthetic.
