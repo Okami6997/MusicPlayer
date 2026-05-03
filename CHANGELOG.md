@@ -10,7 +10,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
-- No notable changes documented yet.
+- Added a dedicated Download Source flow from Settings to configure and validate a remote download URL.
+
+### Changed
+- Simplified offline labeling from `Offline / Downloads` to `Offline` in relevant UI surfaces.
+- Updated navigation to include a Download Source destination and callback wiring from Settings.
+- Added DataStore-backed persistence for the download source URL and URL reachability test state.
 
 ---
 

@@ -13,6 +13,8 @@ Cross-platform Android music player for phone, Wear OS, TV, and Auto.
 ## Current progress
 - Refined color schemes, typography hierarchy, and component styling for a modern minimalist aesthetic.
 - Improved empty states, tab row styling, and playback control visuals.
+- Added Download Source configuration from Settings with URL persistence and connectivity testing.
+- Standardized offline/download wording in UI to improve clarity.
 
 ## Build
 ```bash

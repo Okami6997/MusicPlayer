@@ -19,6 +19,7 @@ import com.musicplayer.ui.settings.AndroidAutoScreen
 import com.musicplayer.ui.settings.DownloadsScreen
 import com.musicplayer.ui.settings.SettingsScreen
 import com.musicplayer.ui.sources.SourcesScreen
+import com.musicplayer.ui.download.DownloadMusicScreen
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.musicplayer.ui.player.PlayerViewModel
 
@@ -27,6 +28,7 @@ sealed class Screen(val route: String) {
     data object Library : Screen("library")
     data object Player : Screen("player")
     data object Search : Screen("search")
+    data object DownloadMusic : Screen("download_music")
     data object Settings : Screen("settings")
     data object Sources : Screen("sources")
     data object Appearance : Screen("appearance")
@@ -115,12 +117,19 @@ fun MusicPlayerNavGraph(
                 onNavigateBack = { navController.popBackStack() }
             )
         }
+        composable(Screen.DownloadMusic.route) {
+            DownloadMusicScreen(
+                onNavigateBack = { navController.popBackStack() },
+                onNavigateToSettings = { navController.navigate(Screen.Downloads.route) }
+            )
+        }
         composable(Screen.Settings.route) {
             SettingsScreen(
                 onNavigateToSources = { navController.navigate(Screen.Sources.route) },
                 onNavigateToAppearance = { navController.navigate(Screen.Appearance.route) },
                 onNavigateToAudio = { navController.navigate(Screen.Audio.route) },
                 onNavigateToDownloads = { navController.navigate(Screen.Downloads.route) },
+                onNavigateToDownloadSource = { navController.navigate(Screen.DownloadMusic.route) },
                 onNavigateToAndroidAuto = { navController.navigate(Screen.AndroidAuto.route) },
                 onNavigateBack = { navController.popBackStack() }
             )

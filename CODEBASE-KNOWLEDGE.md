@@ -79,9 +79,15 @@ UI Layer          →  ViewModel  →  Repository  →  Data Sources
 | `ui/player` | PlayerScreen + PlayerViewModel |
 | `ui/search` | SearchScreen + SearchViewModel (debounced, flatMapLatest) |
 | `ui/settings` | SettingsScreen + SettingsViewModel (DataStore) |
+| `ui/screens/downloads` | Offline and download source configuration/testing UI |
 | `ui/sources` | SourcesScreen + SourcesViewModel (CRUD for MediaSource) |
 | `ui/components` | Reusable composables: TrackListItem, MiniPlayer |
 | `ui/theme` | Material 3 Theme, Typography, dynamic color support |
+
+### Preferences additions
+
+- `download_source_url` is persisted in DataStore and exposed to UI state for download source configuration.
+- URL validation uses an OkHttp `HEAD` request before accepting remote source changes.
 
 ---
 

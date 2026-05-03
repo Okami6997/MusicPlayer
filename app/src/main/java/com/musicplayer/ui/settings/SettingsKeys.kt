@@ -9,8 +9,10 @@ object SettingsKeys {
     val THEME_MODE = stringPreferencesKey("theme_mode")
     val GAPLESS_PLAYBACK = booleanPreferencesKey("gapless_playback")
     val CROSSFADE_DURATION = intPreferencesKey("crossfade_duration")
-    
+
     val ANDROID_AUTO_ENABLED = booleanPreferencesKey("android_auto_enabled")
     val ANDROID_AUTO_AUTO_PLAY = booleanPreferencesKey("android_auto_auto_play")
     val ANDROID_AUTO_SHUFFLE_MODE = booleanPreferencesKey("android_auto_shuffle_mode")
+
+    val DOWNLOAD_SOURCE_URL = stringPreferencesKey("download_source_url")
 }

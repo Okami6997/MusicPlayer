@@ -22,6 +22,7 @@ fun SettingsScreen(
     onNavigateToAppearance: () -> Unit,
     onNavigateToAudio: () -> Unit,
     onNavigateToDownloads: () -> Unit,
+    onNavigateToDownloadSource: () -> Unit,
     onNavigateToAndroidAuto: () -> Unit,
     onNavigateBack: () -> Unit,
     viewModel: SettingsViewModel = hiltViewModel(),
@@ -62,6 +63,19 @@ fun SettingsScreen(
 
             item {
                 ListItem(
+                    headlineContent = { Text("Download Source") },
+                    supportingContent = { Text("Search and download music from remote source") },
+                    leadingContent = { Icon(Icons.Default.Web, contentDescription = null) },
+                    trailingContent = { Icon(Icons.Default.ChevronRight, contentDescription = null) },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { onNavigateToDownloadSource() }
+                )
+                HorizontalDivider()
+            }
+
+            item {
+                ListItem(
                     headlineContent = { Text("Appearance") },
                     supportingContent = { Text("Theme: ${uiState.themeMode.replaceFirstChar { it.uppercase() }}, Dynamic Color: ${if (uiState.dynamicColorEnabled) "On" else "Off"}") },
                     leadingContent = { Icon(Icons.Default.Palette, contentDescription = null) },
@@ -88,7 +102,7 @@ fun SettingsScreen(
 
             item {
                 ListItem(
-                    headlineContent = { Text("Offline / Downloads") },
+                    headlineContent = { Text("Offline") },
                     supportingContent = { Text("Manage offline cache and downloads") },
                     leadingContent = { Icon(Icons.Default.Download, contentDescription = null) },
                     trailingContent = { Icon(Icons.Default.ChevronRight, contentDescription = null) },

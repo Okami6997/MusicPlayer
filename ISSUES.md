@@ -31,6 +31,7 @@ For individual bug reports, please open a GitHub issue on the repository and ref
 
 ### Offline & Downloads
 - [ ] WorkManager-based background download queue
+- [x] Configurable download source URL in Settings (with basic URL reachability test)
 - [ ] Configurable download quality per source
 - [ ] Automatic sync / delta updates from remote sources
 - [ ] Offline mode toggle (disable all network calls)
