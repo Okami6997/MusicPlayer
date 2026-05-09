@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-## [Unreleased]
+## [beta-1] - 2026-05-09
 
 ### Added
 - Added a dedicated Download Source flow from Settings to configure and validate a remote download URL.
