@@ -1,4 +1,4 @@
-package com.musicplayer.ui.settings
+package com.musicplayer.ui.newui
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -8,33 +8,28 @@ import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.musicplayer.ui.components.MiniPlayer
-import com.musicplayer.ui.player.PlayerViewModel
+import com.musicplayer.ui.settings.SettingsViewModel
+import com.musicplayer.ui.settings.SwitchListItem
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SettingsScreen(
+fun NewUiSettingsScreen(
     onNavigateToSources: () -> Unit,
     onNavigateToAppearance: () -> Unit,
     onNavigateToAudio: () -> Unit,
     onNavigateToDownloads: () -> Unit,
-    onNavigateToDownloadSource: () -> Unit,
-    onNavigateToAndroidAuto: () -> Unit,
     onNavigateBack: () -> Unit,
-    viewModel: SettingsViewModel = hiltViewModel(),
-    playerViewModel: PlayerViewModel = hiltViewModel()
+    viewModel: SettingsViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
-    val playerUiState by playerViewModel.uiState.collectAsState()
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Settings") },
+                title = { Text("New UI Settings") },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
                         Icon(Icons.Default.ArrowBack, contentDescription = "Back")
@@ -50,26 +45,13 @@ fun SettingsScreen(
         ) {
             item {
                 ListItem(
-                    headlineContent = { Text("Music Sources") },
-                    supportingContent = { Text("Manage Plex, Emby, Jellyfin, Subsonic and cloud sources") },
-                    leadingContent = { Icon(Icons.Default.Storage, contentDescription = null) },
+                    headlineContent = { Text("Profiles") },
+                    supportingContent = { Text("Manage media server connections") },
+                    leadingContent = { Icon(Icons.Default.AccountCircle, contentDescription = null) },
                     trailingContent = { Icon(Icons.Default.ChevronRight, contentDescription = null) },
                     modifier = Modifier
                         .fillMaxWidth()
                         .clickable { onNavigateToSources() }
-                )
-                HorizontalDivider()
-            }
-
-            item {
-                ListItem(
-                    headlineContent = { Text("Download Source") },
-                    supportingContent = { Text("Search and download music from remote source") },
-                    leadingContent = { Icon(Icons.Default.Web, contentDescription = null) },
-                    trailingContent = { Icon(Icons.Default.ChevronRight, contentDescription = null) },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable { onNavigateToDownloadSource() }
                 )
                 HorizontalDivider()
             }
@@ -114,30 +96,6 @@ fun SettingsScreen(
             }
 
             item {
-                ListItem(
-                    headlineContent = { Text("Android Auto") },
-                    supportingContent = { Text("Configure Android Auto preferences") },
-                    leadingContent = { Icon(Icons.Default.DirectionsCar, contentDescription = null) },
-                    trailingContent = { Icon(Icons.Default.ChevronRight, contentDescription = null) },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable { onNavigateToAndroidAuto() }
-                )
-                HorizontalDivider()
-            }
-
-            item {
-                SwitchListItem(
-                    title = "New UI",
-                    subtitle = "Enable profile-based interface (experimental)",
-                    icon = Icons.Default.SwitchAccount,
-                    checked = uiState.useNewUi,
-                    onCheckedChange = { viewModel.setUseNewUi(it) }
-                )
-                HorizontalDivider()
-            }
-
-            item {
                 SwitchListItem(
                     title = "Dynamic Color",
                     subtitle = "Use Material You colors from your wallpaper",
@@ -160,48 +118,4 @@ fun SettingsScreen(
             }
         }
     }
-}
-
-@Composable
-fun SwitchListItem(
-    title: String,
-    subtitle: String,
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
-    checked: Boolean,
-    onCheckedChange: (Boolean) -> Unit
-) {
-    ListItem(
-        headlineContent = {
-            Text(
-                text = title,
-                style = MaterialTheme.typography.bodyLarge,
-                fontWeight = FontWeight.Medium
-            )
-        },
-        supportingContent = {
-            Text(
-                text = subtitle,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        },
-        leadingContent = {
-            Icon(
-                icon,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        },
-        trailingContent = {
-            Switch(
-                checked = checked,
-                onCheckedChange = onCheckedChange,
-                colors = SwitchDefaults.colors(
-                    checkedThumbColor = MaterialTheme.colorScheme.onPrimary,
-                    checkedTrackColor = MaterialTheme.colorScheme.primary
-                )
-            )
-        },
-        colors = ListItemDefaults.colors(containerColor = Color.Transparent)
-    )
 }

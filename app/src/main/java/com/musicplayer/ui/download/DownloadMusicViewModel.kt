@@ -7,6 +7,7 @@ import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.musicplayer.data.remote.download.*
+import com.musicplayer.profile.ProfileManager
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.*
@@ -33,7 +34,8 @@ data class DownloadMusicUiState(
 class DownloadMusicViewModel @Inject constructor(
     private val dataStore: DataStore<Preferences>,
     private val downloadClient: DownloadClient,
-    private val okHttpClient: OkHttpClient
+    private val okHttpClient: OkHttpClient,
+    private val profileManager: ProfileManager
 ) : ViewModel() {
 
     companion object {
@@ -60,9 +62,15 @@ class DownloadMusicViewModel @Inject constructor(
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), DownloadMusicUiState())
 
-    val downloadSourceUrl: StateFlow<String> = dataStore.data
-        .map { prefs -> prefs[KEY_DOWNLOAD_SOURCE_URL] ?: "" }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), "")
+    val downloadSourceUrl: StateFlow<String> = combine(
+        dataStore.data.map { prefs -> prefs[KEY_DOWNLOAD_SOURCE_URL] ?: "" },
+        profileManager.selectedProfile
+    ) { manualUrl, profile ->
+        // Use profile's dedicated download URL (separate port from music source), otherwise fall back to manual URL
+        profile?.downloadUrl ?: manualUrl
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), "")
+
+    val selectedProfile = profileManager.selectedProfile
 
     fun setDownloadSourceUrl(url: String) {
         viewModelScope.launch {
@@ -143,7 +151,7 @@ class DownloadMusicViewModel @Inject constructor(
                 _uiState.update {
                     it.copy(
                         isLoading = false,
-                        error = "Please set download source URL in settings"
+                        error = "Please select a profile or set download source URL in settings"
                     )
                 }
                 return@launch
@@ -264,7 +272,7 @@ class DownloadMusicViewModel @Inject constructor(
             val url = downloadSourceUrl.value
             if (url.isBlank()) {
                 _uiState.update {
-                    it.copy(downloadStatus = "Please set download source URL in settings")
+                    it.copy(downloadStatus = "Please select a profile or set download source URL")
                 }
                 return@launch
             }

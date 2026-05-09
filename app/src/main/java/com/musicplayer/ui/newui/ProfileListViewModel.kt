@@ -1,0 +1,125 @@
+package com.musicplayer.ui.newui
+
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import com.musicplayer.data.repository.MusicRepository
+import com.musicplayer.data.repository.ProfileMusicRepository
+import com.musicplayer.data.repository.ProfileRepository
+import com.musicplayer.profile.MediaServiceType
+import com.musicplayer.profile.Profile
+import com.musicplayer.profile.toMediaSource
+import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.launch
+import java.util.UUID
+import javax.inject.Inject
+
+data class ProfileListUiState(
+    val profiles: List<Profile> = emptyList(),
+    val isLoading: Boolean = false,
+    val error: String? = null,
+    val syncingProfileId: String? = null,
+    val syncMessage: String? = null
+)
+
+@HiltViewModel
+class ProfileListViewModel @Inject constructor(
+    private val profileRepository: ProfileRepository,
+    private val musicRepository: MusicRepository,
+    private val profileMusicRepository: ProfileMusicRepository
+) : ViewModel() {
+
+    private val _uiState = MutableStateFlow(ProfileListUiState())
+    val uiState: StateFlow<ProfileListUiState> = _uiState.asStateFlow()
+
+    init {
+        loadProfiles()
+    }
+
+    private fun loadProfiles() {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isLoading = true, error = null) }
+            profileRepository.getAllProfiles().collect { profiles ->
+                _uiState.update { it.copy(profiles = profiles, isLoading = false) }
+            }
+        }
+    }
+
+    fun createProfile(
+        name: String,
+        serviceType: MediaServiceType,
+        ipAddress: String,
+        portOverride: Int?
+    ) {
+        viewModelScope.launch {
+            try {
+                val profile = Profile(
+                    id = UUID.randomUUID().toString(),
+                    name = name,
+                    serviceType = serviceType,
+                    ipAddress = ipAddress,
+                    portOverride = portOverride,
+                    isEnabled = true,
+                    lastUsed = System.currentTimeMillis()
+                )
+                profileRepository.saveProfile(profile)
+            } catch (e: Exception) {
+                _uiState.update { it.copy(error = "Failed to create profile: ${e.message}") }
+            }
+        }
+    }
+
+    fun updateProfile(profile: Profile) {
+        viewModelScope.launch {
+            try {
+                profileRepository.updateProfile(profile)
+            } catch (e: Exception) {
+                _uiState.update { it.copy(error = "Failed to update profile: ${e.message}") }
+            }
+        }
+    }
+
+    fun deleteProfile(profile: Profile) {
+        viewModelScope.launch {
+            try {
+                profileRepository.deleteProfile(profile)
+            } catch (e: Exception) {
+                _uiState.update { it.copy(error = "Failed to delete profile: ${e.message}") }
+            }
+        }
+    }
+
+    fun toggleProfileEnabled(profile: Profile) {
+        viewModelScope.launch {
+            try {
+                profileRepository.updateProfile(profile.copy(isEnabled = !profile.isEnabled))
+            } catch (e: Exception) {
+                _uiState.update { it.copy(error = "Failed to toggle profile: ${e.message}") }
+            }
+        }
+    }
+
+    fun clearError() {
+        _uiState.update { it.copy(error = null) }
+    }
+
+    fun syncProfile(profile: Profile) {
+        if (_uiState.value.syncingProfileId != null) return // already syncing one
+        viewModelScope.launch {
+            _uiState.update { it.copy(syncingProfileId = profile.id, syncMessage = null) }
+            try {
+                val source = profile.toMediaSource()
+                val tracks = musicRepository.fetchTracksFromSource(source)
+                profileMusicRepository.clearTracksForProfile(profile.id)
+                profileMusicRepository.saveTracks(profile.id, tracks)
+                _uiState.update { it.copy(syncingProfileId = null, syncMessage = "Synced ${tracks.size} tracks from \"${profile.name}\"") }
+            } catch (e: Exception) {
+                _uiState.update { it.copy(syncingProfileId = null, syncMessage = "Sync failed: ${e.message}") }
+            }
+        }
+    }
+
+    fun clearSyncMessage() {
+        _uiState.update { it.copy(syncMessage = null) }
+    }
+}

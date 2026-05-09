@@ -17,6 +17,7 @@ import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.LibraryMusic
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.MusicNote
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -45,9 +46,19 @@ fun LibraryScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val playerUiState by playerViewModel.uiState.collectAsState()
+    val isSyncing by viewModel.isSyncing.collectAsState()
+    val syncMessage by viewModel.syncMessage.collectAsState()
+    val snackbarHostState = remember { SnackbarHostState() }
     var selectedTab by remember { mutableIntStateOf(0) }
     val tabs = listOf("Tracks", "Albums", "Artists", "Playlists")
     val context = LocalContext.current
+
+    LaunchedEffect(syncMessage) {
+        syncMessage?.let {
+            snackbarHostState.showSnackbar(it)
+            viewModel.clearSyncMessage()
+        }
+    }
 
     var trackToAddToPlaylist by remember { mutableStateOf<Track?>(null) }
     var showCreatePlaylistDialog by remember { mutableStateOf(false) }
@@ -127,12 +138,26 @@ fun LibraryScreen(
     }
 
     Scaffold(
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
                 title = { Text("Library") },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
                         Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                    }
+                },
+                actions = {
+                    if (isSyncing) {
+                        CircularProgressIndicator(
+                            modifier = Modifier
+                                .size(24.dp)
+                                .padding(end = 4.dp)
+                        )
+                    } else {
+                        IconButton(onClick = { viewModel.syncCurrentProfile() }) {
+                            Icon(Icons.Default.Refresh, contentDescription = "Sync library")
+                        }
                     }
                 }
             )

@@ -14,7 +14,8 @@ data class SettingsUiState(
     val dynamicColorEnabled: Boolean = true,
     val themeMode: String = "system",
     val gaplessPlayback: Boolean = true,
-    val crossfadeDurationMs: Int = 0
+    val crossfadeDurationMs: Int = 0,
+    val useNewUi: Boolean = false
 )
 
 @HiltViewModel
@@ -35,7 +36,8 @@ class SettingsViewModel @Inject constructor(
                 dynamicColorEnabled = prefs[SettingsKeys.DYNAMIC_COLOR] ?: true,
                 themeMode = prefs[SettingsKeys.THEME_MODE] ?: "system",
                 gaplessPlayback = prefs[SettingsKeys.GAPLESS_PLAYBACK] ?: true,
-                crossfadeDurationMs = prefs[SettingsKeys.CROSSFADE_DURATION] ?: 0
+                crossfadeDurationMs = prefs[SettingsKeys.CROSSFADE_DURATION] ?: 0,
+                useNewUi = prefs[SettingsKeys.USE_NEW_UI] ?: false
             )
         }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), SettingsUiState())
@@ -55,6 +57,12 @@ class SettingsViewModel @Inject constructor(
     fun setGaplessPlayback(enabled: Boolean) {
         viewModelScope.launch {
             dataStore.edit { it[SettingsKeys.GAPLESS_PLAYBACK] = enabled }
+        }
+    }
+
+    fun setUseNewUi(enabled: Boolean) {
+        viewModelScope.launch {
+            dataStore.edit { it[SettingsKeys.USE_NEW_UI] = enabled }
         }
     }
 }

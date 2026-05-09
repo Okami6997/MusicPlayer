@@ -27,6 +27,11 @@ import java.util.concurrent.TimeUnit
 import javax.inject.Inject
 import javax.inject.Singleton
 
+sealed class ConnectionTestResult {
+    data object Success : ConnectionTestResult()
+    data class Error(val message: String) : ConnectionTestResult()
+}
+
 /**
  * Central repository for all music data.
  * Aggregates local and remote sources, persists everything in Room.
@@ -194,11 +199,9 @@ class MusicRepository @Inject constructor(
                 scanLocalLibrary()
             }
             MediaSourceType.SUBSONIC,
-            MediaSourceType.OPEN_SUBSONIC -> {
-                syncSubsonicSource(source)
-            }
+            MediaSourceType.OPEN_SUBSONIC,
             MediaSourceType.NAVIDROME -> {
-                syncNavidromeSource(source)
+                syncSubsonicSource(source)
             }
             MediaSourceType.JELLYFIN,
             MediaSourceType.EMBY -> {
@@ -218,18 +221,23 @@ class MusicRepository @Inject constructor(
 
     /**
      * Fetches all tracks from a Subsonic-compatible server.
+     * Also persists them to the old-UI tracks table (for old UI sources).
      */
     private suspend fun syncSubsonicSource(source: MediaSource): List<Track> {
         return try {
-            Timber.d("Starting sync for Subsonic source: ${source.name}")
-            val api = createApi<SubsonicApi>(source)
-            val tracks = subsonicClient.fetchAllTracks(api, source)
+            val tracks = fetchSubsonicTracks(source)
             persistSyncedTracks(source.id, tracks, source.name)
             tracks
         } catch (e: Exception) {
             Timber.e(e, "Error syncing Subsonic source: ${source.name}")
             throw e
         }
+    }
+
+    private suspend fun fetchSubsonicTracks(source: MediaSource): List<Track> {
+        Timber.d("Fetching tracks from Subsonic source: ${source.name}")
+        val api = createApi<SubsonicApi>(source)
+        return subsonicClient.fetchAllTracks(api, source)
     }
 
     /**
@@ -250,12 +258,11 @@ class MusicRepository @Inject constructor(
 
     /**
      * Fetches all tracks from a Jellyfin/Emby server.
+     * Also persists them to the old-UI tracks table (for old UI sources).
      */
     private suspend fun syncJellyfinSource(source: MediaSource): List<Track> {
         return try {
-            Timber.d("Starting sync for Jellyfin/Emby source: ${source.name}")
-            val api = createApi<JellyfinApi>(source)
-            val tracks = jellyfinClient.fetchAllTracks(api, source)
+            val tracks = fetchJellyfinTracks(source)
             persistSyncedTracks(source.id, tracks, source.name)
             tracks
         } catch (e: Exception) {
@@ -264,14 +271,19 @@ class MusicRepository @Inject constructor(
         }
     }
 
+    private suspend fun fetchJellyfinTracks(source: MediaSource): List<Track> {
+        Timber.d("Fetching tracks from Jellyfin/Emby source: ${source.name}")
+        val api = createApi<JellyfinApi>(source)
+        return jellyfinClient.fetchAllTracks(api, source)
+    }
+
     /**
      * Fetches all tracks from a Plex Media Server.
+     * Also persists them to the old-UI tracks table (for old UI sources).
      */
     private suspend fun syncPlexSource(source: MediaSource): List<Track> {
         return try {
-            Timber.d("Starting sync for Plex source: ${source.name}")
-            val api = createApi<PlexApi>(source)
-            val tracks = plexClient.fetchAllTracks(api, source)
+            val tracks = fetchPlexTracks(source)
             persistSyncedTracks(source.id, tracks, source.name)
             tracks
         } catch (e: Exception) {
@@ -280,11 +292,104 @@ class MusicRepository @Inject constructor(
         }
     }
 
+    private suspend fun fetchPlexTracks(source: MediaSource): List<Track> {
+        Timber.d("Fetching tracks from Plex source: ${source.name}")
+        val api = createApi<PlexApi>(source)
+        return plexClient.fetchAllTracks(api, source)
+    }
+
     private suspend fun persistSyncedTracks(sourceId: String, tracks: List<Track>, sourceName: String) {
         if (tracks.isNotEmpty()) {
             trackDao.deleteTracksBySource(sourceId)
             trackDao.upsertTracks(tracks.map { it.toEntity() })
             Timber.d("Synced ${tracks.size} tracks from $sourceName")
+        }
+    }
+
+    /**
+     * Fetches tracks from a remote source WITHOUT writing to the old-UI tracks table.
+     * Use this from the new UI (profile-based) so that data stays mutually exclusive.
+     */
+    suspend fun fetchTracksFromSource(source: MediaSource): List<Track> {
+        return when (source.type) {
+            MediaSourceType.SUBSONIC,
+            MediaSourceType.OPEN_SUBSONIC,
+            MediaSourceType.NAVIDROME -> fetchSubsonicTracks(source)
+            MediaSourceType.JELLYFIN,
+            MediaSourceType.EMBY -> fetchJellyfinTracks(source)
+            MediaSourceType.PLEX -> fetchPlexTracks(source)
+            else -> {
+                Timber.w("fetchTracksFromSource: unsupported type ${source.type}")
+                emptyList()
+            }
+        }
+    }
+
+    // ── Connection testing ────────────────────────────────────────────────────
+
+    suspend fun testConnection(source: MediaSource): ConnectionTestResult {
+        return when (source.type) {
+            MediaSourceType.LOCAL -> ConnectionTestResult.Success
+            MediaSourceType.JELLYFIN, MediaSourceType.EMBY -> testJellyfinConnection(source)
+            MediaSourceType.PLEX -> testPlexConnection(source)
+            MediaSourceType.SUBSONIC, MediaSourceType.OPEN_SUBSONIC, MediaSourceType.NAVIDROME -> testSubsonicConnection(source)
+            else -> ConnectionTestResult.Error("Connection testing not supported for this source type")
+        }
+    }
+
+    private suspend fun testJellyfinConnection(source: MediaSource): ConnectionTestResult {
+        return try {
+            val api = createApi<JellyfinApi>(source)
+            val success = jellyfinClient.testConnection(api, source)
+            if (success) ConnectionTestResult.Success
+            else ConnectionTestResult.Error("Failed to authenticate with Jellyfin/Emby server")
+        } catch (e: Exception) {
+            Timber.e(e, "Jellyfin/Emby connection test failed for ${source.name}")
+            ConnectionTestResult.Error(formatConnectionError(e))
+        }
+    }
+
+    private suspend fun testPlexConnection(source: MediaSource): ConnectionTestResult {
+        return try {
+            val api = createApi<PlexApi>(source)
+            val success = plexClient.testConnection(api, source)
+            if (success) ConnectionTestResult.Success
+            else ConnectionTestResult.Error("Failed to authenticate with Plex server")
+        } catch (e: Exception) {
+            Timber.e(e, "Plex connection test failed for ${source.name}")
+            ConnectionTestResult.Error(formatConnectionError(e))
+        }
+    }
+
+    private suspend fun testSubsonicConnection(source: MediaSource): ConnectionTestResult {
+        return try {
+            val api = createApi<SubsonicApi>(source)
+            val (token, salt) = subsonicClient.generateToken(source.password)
+            val response = api.ping(username = source.username, token = token, salt = salt)
+            val body = response?.response
+                ?: return ConnectionTestResult.Error("Empty response from server")
+            body.error?.let { err ->
+                return ConnectionTestResult.Error("${err.message} (code: ${err.code})")
+            }
+            if (body.status == "ok") ConnectionTestResult.Success
+            else ConnectionTestResult.Error("Unexpected status: ${body.status}")
+        } catch (e: Exception) {
+            Timber.e(e, "Subsonic connection test failed for ${source.name}")
+            ConnectionTestResult.Error(formatConnectionError(e))
+        }
+    }
+
+    private fun formatConnectionError(e: Exception): String {
+        val msg = e.message ?: "Connection failed"
+        return when {
+            msg.contains("Unable to resolve host") -> "Cannot reach server. Check the URL."
+            msg.contains("connection refused", ignoreCase = true) -> "Connection refused. Is the server running?"
+            msg.contains("401") -> "Authentication failed. Check your credentials."
+            msg.contains("403") -> "Access denied. Check your credentials."
+            msg.contains("cleartext") -> "HTTPS required. Use an HTTPS URL."
+            msg.contains("JSON") -> "Invalid response from server."
+            msg.contains("timeout", ignoreCase = true) -> "Connection timed out."
+            else -> "Connection failed: $msg"
         }
     }
 }

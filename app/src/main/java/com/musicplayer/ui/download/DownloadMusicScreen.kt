@@ -34,6 +34,7 @@ fun DownloadMusicScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val downloadSourceUrl by viewModel.downloadSourceUrl.collectAsState()
+    val selectedProfile by viewModel.selectedProfile.collectAsState()
 
     var searchQuery by remember { mutableStateOf(TextFieldValue("")) }
     var showUrlDialog by remember { mutableStateOf(false) }
@@ -70,22 +71,66 @@ fun DownloadMusicScreen(
                 .padding(paddingValues)
         ) {
             // URL configuration row
-            ListItem(
-                headlineContent = { Text("Download Website URL") },
-                supportingContent = {
-                    Text(
-                        if (downloadSourceUrl.isEmpty()) "Not configured" else downloadSourceUrl,
-                        maxLines = 1
+            selectedProfile?.let { profile ->
+                // Show selected profile info
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.primaryContainer
                     )
-                },
-                leadingContent = { Icon(Icons.Default.Web, contentDescription = null) },
-                trailingContent = { Icon(Icons.Default.Edit, contentDescription = "Edit URL") },
-                modifier = Modifier.clickable { showUrlDialog = true }
-            )
-            HorizontalDivider()
+                ) {
+                    Column(
+                        modifier = Modifier.padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Icon(
+                                Icons.Default.AccountCircle,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.onPrimaryContainer
+                            )
+                            Text(
+                                "Using Profile: ${profile.name}",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onPrimaryContainer
+                            )
+                        }
+                        Text(
+                            "${profile.serviceType.displayName} • ${profile.ipAddress}:${profile.effectivePort}",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer
+                        )
+                        Text(
+                            "URL: $downloadSourceUrl",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer
+                        )
+                    }
+                }
+            }
+            if (selectedProfile == null) {
+                // Show manual URL configuration
+                ListItem(
+                    headlineContent = { Text("Download Website URL") },
+                    supportingContent = {
+                        Text(
+                            if (downloadSourceUrl.isEmpty()) "Not configured" else downloadSourceUrl,
+                            maxLines = 1
+                        )
+                    },
+                    leadingContent = { Icon(Icons.Default.Web, contentDescription = null) },
+                    trailingContent = { Icon(Icons.Default.Edit, contentDescription = "Edit URL") },
+                    modifier = Modifier.clickable { showUrlDialog = true }
+                )
+                HorizontalDivider()
+            }
 
-            // URL status indicator (show only if not configured)
-            if (downloadSourceUrl.isBlank()) {
+            // URL status indicator (show only if not configured and no profile selected)
+            if (selectedProfile == null && downloadSourceUrl.isBlank()) {
                 Card(
                     modifier = Modifier
                         .fillMaxWidth()

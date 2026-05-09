@@ -80,20 +80,3 @@ fun AudioScreen(
     }
 }
 
-@Composable
-private fun SwitchListItem(
-    title: String,
-    subtitle: String,
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
-    checked: Boolean,
-    onCheckedChange: (Boolean) -> Unit
-) {
-    ListItem(
-        headlineContent = { Text(title) },
-        supportingContent = { Text(subtitle) },
-        leadingContent = { Icon(icon, contentDescription = null) },
-        trailingContent = {
-            Switch(checked = checked, onCheckedChange = onCheckedChange)
-        }
-    )
-}

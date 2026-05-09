@@ -16,6 +16,7 @@ import com.musicplayer.service.PlayerHolder
 import dagger.hilt.android.AndroidEntryPoint
 import com.musicplayer.ui.theme.MusicPlayerTheme
 import com.musicplayer.ui.navigation.MusicPlayerNavGraph
+import com.musicplayer.ui.navigation.NewUiNavGraph
 import javax.inject.Inject
 
 @AndroidEntryPoint
@@ -40,10 +41,17 @@ class MainActivity : ComponentActivity() {
                 dynamicColor = uiState.dynamicColorEnabled,
                 artworkUri = uiState.currentArtworkUri
             ) {
-                MusicPlayerNavGraph(navController = controller)
+                if (uiState.useNewUi) {
+                    NewUiNavGraph(
+                        navController = controller,
+                        onSwitchToOldUi = { viewModel.switchToOldUi() }
+                    )
+                } else {
+                    MusicPlayerNavGraph(navController = controller)
+                }
             }
         }
-        
+
         handleIntent(intent)
     }
 

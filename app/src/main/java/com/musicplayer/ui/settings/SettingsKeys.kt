@@ -15,4 +15,7 @@ object SettingsKeys {
     val ANDROID_AUTO_SHUFFLE_MODE = booleanPreferencesKey("android_auto_shuffle_mode")
 
     val DOWNLOAD_SOURCE_URL = stringPreferencesKey("download_source_url")
+
+    // New UI Feature Flag
+    val USE_NEW_UI = booleanPreferencesKey("use_new_ui")
 }

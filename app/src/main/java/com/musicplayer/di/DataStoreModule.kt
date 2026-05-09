@@ -12,6 +12,7 @@ import dagger.hilt.components.SingletonComponent
 import javax.inject.Singleton
 
 private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "settings")
+private val Context.profileDataStore: DataStore<Preferences> by preferencesDataStore(name = "profile_preferences")
 
 @Module
 @InstallIn(SingletonComponent::class)
@@ -21,4 +22,10 @@ object DataStoreModule {
     @Singleton
     fun provideDataStore(@ApplicationContext context: Context): DataStore<Preferences> =
         context.dataStore
+
+    @Provides
+    @Singleton
+    @ProfileDataStore
+    fun provideProfileDataStore(@ApplicationContext context: Context): DataStore<Preferences> =
+        context.profileDataStore
 }

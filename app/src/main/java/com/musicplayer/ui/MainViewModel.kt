@@ -12,6 +12,7 @@ import androidx.media3.common.util.UnstableApi
 import com.musicplayer.service.PlayerHolder
 import com.musicplayer.ui.settings.SettingsKeys
 import dagger.hilt.android.lifecycle.HiltViewModel
+import androidx.datastore.preferences.core.edit
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -19,7 +20,8 @@ import javax.inject.Inject
 data class MainUiState(
     val themeMode: String = "system",
     val dynamicColorEnabled: Boolean = true,
-    val currentArtworkUri: String? = null
+    val currentArtworkUri: String? = null,
+    val useNewUi: Boolean = false
 )
 
 @HiltViewModel
@@ -37,10 +39,17 @@ class MainViewModel @OptIn(UnstableApi::class) @Inject constructor(
         MainUiState(
             themeMode = prefs[SettingsKeys.THEME_MODE] ?: "system",
             dynamicColorEnabled = prefs[SettingsKeys.DYNAMIC_COLOR] ?: true,
-            currentArtworkUri = artworkUri
+            currentArtworkUri = artworkUri,
+            useNewUi = prefs[SettingsKeys.USE_NEW_UI] ?: false
         )
     }
     .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), MainUiState())
+
+    fun switchToOldUi() {
+        viewModelScope.launch {
+            dataStore.edit { it[SettingsKeys.USE_NEW_UI] = false }
+        }
+    }
 
     init {
         viewModelScope.launch {

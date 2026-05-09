@@ -4,12 +4,16 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.musicplayer.data.repository.MusicRepository
 import com.musicplayer.data.repository.DownloadRepository
+import com.musicplayer.data.repository.ProfileMusicRepository
 import com.musicplayer.domain.model.Album
 import com.musicplayer.domain.model.Artist
 import com.musicplayer.domain.model.Playlist
 import com.musicplayer.domain.model.Track
+import com.musicplayer.profile.ProfileManager
+import com.musicplayer.profile.toMediaSource
 import com.musicplayer.service.PlayerHolder
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -25,12 +29,21 @@ data class LibraryUiState(
 @HiltViewModel
 class LibraryViewModel @Inject constructor(
     private val repository: MusicRepository,
+    private val profileMusicRepository: ProfileMusicRepository,
+    private val profileManager: ProfileManager,
     private val playerHolder: PlayerHolder,
     private val downloadRepository: DownloadRepository
 ) : ViewModel() {
 
-    val uiState: StateFlow<LibraryUiState> = repository.getAllTracks()
-        .combine(repository.getAllPlaylists()) { tracks, playlists ->
+    @OptIn(ExperimentalCoroutinesApi::class)
+    val uiState: StateFlow<LibraryUiState> = profileManager.selectedProfile
+        .flatMapLatest { profile ->
+            val tracksFlow: Flow<List<Track>> = if (profile != null) {
+                profileMusicRepository.getTracksForCurrentProfile()
+            } else {
+                repository.getAllTracks()
+            }
+            tracksFlow.combine(repository.getAllPlaylists()) { tracks, playlists ->
             val albums = tracks
                 .groupBy { it.albumId.ifEmpty { it.album } }
                 .map { (_, albumTracks) ->
@@ -61,15 +74,48 @@ class LibraryViewModel @Inject constructor(
                     )
                 }.sortedBy { it.name }
 
-            LibraryUiState(
-                tracks = tracks,
-                albums = albums,
-                artists = artists,
-                playlists = playlists,
-                isLoading = false
-            )
+                LibraryUiState(
+                    tracks = tracks,
+                    albums = albums,
+                    artists = artists,
+                    playlists = playlists,
+                    isLoading = false
+                )
+            }
         }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), LibraryUiState())
+
+    private val _isSyncing = MutableStateFlow(false)
+    private val _syncMessage = MutableStateFlow<String?>(null)
+
+    val isSyncing: StateFlow<Boolean> = _isSyncing.asStateFlow()
+    val syncMessage: StateFlow<String?> = _syncMessage.asStateFlow()
+
+    fun syncCurrentProfile() {
+        val profile = profileManager.selectedProfile.value ?: run {
+            _syncMessage.value = "No profile selected"
+            return
+        }
+        viewModelScope.launch {
+            _isSyncing.value = true
+            _syncMessage.value = null
+            try {
+                val source = profile.toMediaSource()
+                val tracks = repository.fetchTracksFromSource(source)
+                profileMusicRepository.clearTracksForProfile(profile.id)
+                profileMusicRepository.saveTracks(profile.id, tracks)
+                _syncMessage.value = "Synced ${tracks.size} tracks"
+            } catch (e: Exception) {
+                _syncMessage.value = "Sync failed: ${e.message}"
+            } finally {
+                _isSyncing.value = false
+            }
+        }
+    }
+
+    fun clearSyncMessage() {
+        _syncMessage.value = null
+    }
 
     fun playTrack(track: Track) {
         val tracks = uiState.value.tracks

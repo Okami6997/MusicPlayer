@@ -6,6 +6,7 @@ import coil.ImageLoader
 import com.musicplayer.data.local.MediaSourceDao
 import com.musicplayer.data.local.MusicDatabase
 import com.musicplayer.data.local.PlaylistDao
+import com.musicplayer.data.local.ProfileDao
 import com.musicplayer.data.local.TrackDao
 import dagger.Module
 import dagger.Provides
@@ -36,6 +37,9 @@ object AppModule {
 
     @Provides
     fun providePlaylistDao(db: MusicDatabase): PlaylistDao = db.playlistDao()
+
+    @Provides
+    fun provideProfileDao(db: MusicDatabase): ProfileDao = db.profileDao()
 
     @Provides
     @Singleton

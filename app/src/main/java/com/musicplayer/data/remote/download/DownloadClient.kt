@@ -26,7 +26,13 @@ class DownloadClient @Inject constructor() {
         .build()
 
     fun createApi(baseUrl: String): DownloadApi {
-        val formattedBaseUrl = if (baseUrl.endsWith("/")) baseUrl else "$baseUrl/"
+        // Ensure the base URL ends with /api/ for the download service
+        val formattedBaseUrl = when {
+            baseUrl.endsWith("/api/") -> baseUrl
+            baseUrl.endsWith("/api") -> "$baseUrl/"
+            baseUrl.endsWith("/") -> "${baseUrl}api/"
+            else -> "$baseUrl/api/"
+        }
         Timber.d("Creating Download API with base URL: $formattedBaseUrl")
         return Retrofit.Builder()
             .baseUrl(formattedBaseUrl)
