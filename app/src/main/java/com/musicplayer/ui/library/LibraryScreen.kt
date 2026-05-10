@@ -41,13 +41,13 @@ fun LibraryScreen(
     onNavigateToArtist: (String) -> Unit,
     onNavigateToPlaylist: (String) -> Unit,
     onNavigateBack: () -> Unit,
-    viewModel: LibraryViewModel = hiltViewModel(),
+    libraryViewModel: LibraryViewModel = hiltViewModel(),
     playerViewModel: PlayerViewModel = hiltViewModel()
 ) {
-    val uiState by viewModel.uiState.collectAsState()
+    val uiState by libraryViewModel.uiState.collectAsState()
     val playerUiState by playerViewModel.uiState.collectAsState()
-    val isSyncing by viewModel.isSyncing.collectAsState()
-    val syncMessage by viewModel.syncMessage.collectAsState()
+    val isSyncing by libraryViewModel.isSyncing.collectAsState()
+    val syncMessage by libraryViewModel.syncMessage.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
     var selectedTab by remember { mutableIntStateOf(0) }
     val tabs = listOf("Tracks", "Albums", "Artists", "Playlists")
@@ -56,7 +56,7 @@ fun LibraryScreen(
     LaunchedEffect(syncMessage) {
         syncMessage?.let {
             snackbarHostState.showSnackbar(it)
-            viewModel.clearSyncMessage()
+            libraryViewModel.clearSyncMessage()
         }
     }
 
@@ -81,7 +81,7 @@ fun LibraryScreen(
                 Button(
                     onClick = {
                         if (newPlaylistName.isNotBlank()) {
-                            viewModel.createPlaylist(newPlaylistName)
+                            libraryViewModel.createPlaylist(newPlaylistName)
                             newPlaylistName = ""
                             showCreatePlaylistDialog = false
                         }
@@ -108,7 +108,7 @@ fun LibraryScreen(
         ActivityResultContracts.RequestMultiplePermissions()
     ) { permissions ->
         if (permissions.values.all { it }) {
-            viewModel.scanLocalLibrary()
+            libraryViewModel.scanLocalLibrary()
         }
     }
 
@@ -117,7 +117,7 @@ fun LibraryScreen(
             ContextCompat.checkSelfPermission(context, it) == PackageManager.PERMISSION_GRANTED
         }
         if (allGranted) {
-            viewModel.scanLocalLibrary()
+            libraryViewModel.scanLocalLibrary()
         } else {
             permissionLauncher.launch(permissionsToRequest)
         }
@@ -129,10 +129,10 @@ fun LibraryScreen(
             playlists = uiState.playlists,
             onDismiss = { trackToAddToPlaylist = null },
             onPlaylistSelected = { playlist ->
-                viewModel.addTrackToPlaylist(trackToAddToPlaylist!!, playlist.id)
+                libraryViewModel.addTrackToPlaylist(trackToAddToPlaylist!!, playlist.id)
             },
             onCreatePlaylist = { name ->
-                viewModel.createPlaylistAndAddTrack(name, trackToAddToPlaylist!!)
+                libraryViewModel.createPlaylistAndAddTrack(name, trackToAddToPlaylist!!)
             }
         )
     }
@@ -155,7 +155,7 @@ fun LibraryScreen(
                                 .padding(end = 4.dp)
                         )
                     } else {
-                        IconButton(onClick = { viewModel.syncCurrentProfile() }) {
+                        IconButton(onClick = { libraryViewModel.syncCurrentProfile() }) {
                             Icon(Icons.Default.Refresh, contentDescription = "Sync library")
                         }
                     }
@@ -207,10 +207,10 @@ fun LibraryScreen(
                                 TrackListItem(
                                     track = track,
                                     onClick = {
-                                        viewModel.playTrack(track)
+                                        libraryViewModel.playTrack(track)
                                         onNavigateToPlayer()
                                     },
-                                    onDownloadClick = { viewModel.downloadTrack(track) },
+                                    onDownloadClick = { libraryViewModel.downloadTrack(track) },
                                     onMoreClick = { trackToAddToPlaylist = track }
                                 )
                             }
@@ -228,7 +228,7 @@ fun LibraryScreen(
                                     headlineContent = { Text(album.title) },
                                     supportingContent = { Text("${album.artist} • ${album.trackCount} tracks • ${album.sourceName}") },
                                     trailingContent = {
-                                        IconButton(onClick = { viewModel.downloadAlbum(album) }) {
+                                        IconButton(onClick = { libraryViewModel.downloadAlbum(album) }) {
                                             Icon(Icons.Default.Download, contentDescription = "Download Album")
                                         }
                                     }
@@ -278,7 +278,7 @@ fun LibraryScreen(
                                                     text = { Text("Play") },
                                                     leadingIcon = { Icon(Icons.Default.MusicNote, null) },
                                                     onClick = {
-                                                        viewModel.playPlaylist(playlist)
+                                                        libraryViewModel.playPlaylist(playlist)
                                                         onNavigateToPlayer()
                                                         showMenu = false
                                                     }
@@ -287,7 +287,7 @@ fun LibraryScreen(
                                                     text = { Text("Delete") },
                                                     leadingIcon = { Icon(Icons.Default.Delete, null) },
                                                     onClick = {
-                                                        viewModel.deletePlaylist(playlist.id)
+                                                        libraryViewModel.deletePlaylist(playlist.id)
                                                         showMenu = false
                                                     }
                                                 )

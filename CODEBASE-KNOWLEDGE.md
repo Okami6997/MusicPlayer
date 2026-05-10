@@ -75,7 +75,7 @@ UI Layer          →  ViewModel  →  Repository  →  Data Sources
 | `di` | Hilt modules: AppModule (DB, OkHttp), DataStoreModule |
 | `ui/navigation` | NavGraph, Screen sealed class |
 | `ui/home` | HomeScreen + HomeViewModel |
-| `ui/library` | LibraryScreen + LibraryViewModel (groups tracks into albums/artists) |
+| `ui/library` | LibraryScreen + LibraryViewModel (profile-aware; groups tracks into albums/artists) + OldUiLibraryViewModel (always uses MusicRepository directly, profile-independent) |
 | `ui/player` | PlayerScreen + PlayerViewModel |
 | `ui/search` | SearchScreen + SearchViewModel (debounced, flatMapLatest) |
 | `ui/settings` | SettingsScreen + SettingsViewModel (DataStore) |

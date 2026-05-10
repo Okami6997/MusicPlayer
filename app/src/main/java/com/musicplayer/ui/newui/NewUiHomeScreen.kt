@@ -11,7 +11,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.musicplayer.domain.model.PlayerState
 import com.musicplayer.profile.Profile
 import com.musicplayer.ui.components.MiniPlayer
 import com.musicplayer.ui.player.PlayerViewModel
@@ -62,179 +61,180 @@ fun NewUiHomeScreen(
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 // Profile selection card
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceVariant
-                )
-            ) {
-                Column(
-                    modifier = Modifier.padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Text(
-                            "Current Profile",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold
-                        )
-                        IconButton(onClick = onNavigateToProfiles) {
-                            Icon(Icons.Default.Settings, contentDescription = "Manage Profiles")
-                        }
-                    }
-
-                    if (selectedProfile != null) {
-                        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                            Text(
-                                selectedProfile!!.name,
-                                style = MaterialTheme.typography.headlineSmall,
-                                fontWeight = FontWeight.Bold
-                            )
-                            Text(
-                                "${selectedProfile!!.serviceType.displayName} • ${selectedProfile!!.ipAddress}:${selectedProfile!!.effectivePort}",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                    } else {
-                        Column(
-                            verticalArrangement = Arrangement.spacedBy(8.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Icon(
-                                Icons.Default.AccountCircle,
-                                contentDescription = null,
-                                modifier = Modifier.size(48.dp),
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                            Text(
-                                "No profile selected",
-                                style = MaterialTheme.typography.bodyLarge,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                            Button(onClick = onNavigateToProfiles) {
-                                Icon(Icons.Default.Add, contentDescription = null)
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Text("Select Profile")
-                            }
-                        }
-                    }
-                }
-            }
-
-            // Available profiles list
-            if (uiState.availableProfiles.isNotEmpty()) {
                 Card(
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceVariant
+                    )
                 ) {
                     Column(
                         modifier = Modifier.padding(16.dp),
                         verticalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
-                        Text(
-                            "Available Profiles",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold
-                        )
-                        uiState.availableProfiles.forEach { profile ->
-                            ProfileListItem(
-                                profile = profile,
-                                isSelected = selectedProfile?.id == profile.id,
-                                onClick = { viewModel.selectProfile(profile.id) }
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text(
+                                "Current Profile",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold
                             )
+                            IconButton(onClick = onNavigateToProfiles) {
+                                Icon(Icons.Default.Settings, contentDescription = "Manage Profiles")
+                            }
+                        }
+
+                        if (selectedProfile != null) {
+                            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                Text(
+                                    selectedProfile!!.name,
+                                    style = MaterialTheme.typography.headlineSmall,
+                                    fontWeight = FontWeight.Bold
+                                )
+                                Text(
+                                    "${selectedProfile!!.serviceType.displayName} • ${selectedProfile!!.ipAddress}:${selectedProfile!!.effectivePort}",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        } else {
+                            Column(
+                                verticalArrangement = Arrangement.spacedBy(8.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Icon(
+                                    Icons.Default.AccountCircle,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(48.dp),
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                Text(
+                                    "No profile selected",
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                Button(onClick = onNavigateToProfiles) {
+                                    Icon(Icons.Default.Add, contentDescription = null)
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text("Select Profile")
+                                }
+                            }
                         }
                     }
                 }
-            } else {
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.errorContainer
-                    )
-                ) {
-                    Column(
-                        modifier = Modifier.padding(16.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
+
+                // Available profiles list
+                if (uiState.availableProfiles.isNotEmpty()) {
+                    Card(
+                        modifier = Modifier.fillMaxWidth()
                     ) {
-                        Icon(
-                            Icons.Default.Warning,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.onErrorContainer
+                        Column(
+                            modifier = Modifier.padding(16.dp),
+                            verticalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            Text(
+                                "Available Profiles",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold
+                            )
+                            uiState.availableProfiles.forEach { profile ->
+                                ProfileListItem(
+                                    profile = profile,
+                                    isSelected = selectedProfile?.id == profile.id,
+                                    onClick = { viewModel.selectProfile(profile.id) }
+                                )
+                            }
+                        }
+                    }
+                } else {
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.errorContainer
                         )
-                        Text(
-                            "No profiles configured",
-                            style = MaterialTheme.typography.titleMedium,
-                            color = MaterialTheme.colorScheme.onErrorContainer
-                        )
-                        Button(onClick = onNavigateToProfiles) {
-                            Icon(Icons.Default.Add, contentDescription = null)
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text("Create Profile")
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(16.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Icon(
+                                Icons.Default.Warning,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.onErrorContainer
+                            )
+                            Text(
+                                "No profiles configured",
+                                style = MaterialTheme.typography.titleMedium,
+                                color = MaterialTheme.colorScheme.onErrorContainer
+                            )
+                            Button(onClick = onNavigateToProfiles) {
+                                Icon(Icons.Default.Add, contentDescription = null)
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text("Create Profile")
+                            }
                         }
                     }
                 }
+
+                // Feature navigation
+                Text(
+                    "Features",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.align(Alignment.Start)
+                )
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    FeatureButton(
+                        icon = Icons.Default.Download,
+                        label = "Download",
+                        onClick = onNavigateToDownloadMusic,
+                        modifier = Modifier.weight(1f)
+                    )
+                    FeatureButton(
+                        icon = Icons.Default.LibraryMusic,
+                        label = "Library",
+                        onClick = onNavigateToLibrary,
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    FeatureButton(
+                        icon = Icons.Default.Search,
+                        label = "Search",
+                        onClick = onNavigateToSearch,
+                        modifier = Modifier.weight(1f)
+                    )
+                    FeatureButton(
+                        icon = Icons.Default.Settings,
+                        label = "Settings",
+                        onClick = onNavigateToSettings,
+                        modifier = Modifier.weight(1f)
+                    )
+                }
             }
 
-            // Feature navigation
-            Text(
-                "Features",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.align(Alignment.Start)
-            )
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                FeatureButton(
-                    icon = Icons.Default.Download,
-                    label = "Download",
-                    onClick = onNavigateToDownloadMusic,
-                    modifier = Modifier.weight(1f)
-                )
-                FeatureButton(
-                    icon = Icons.Default.LibraryMusic,
-                    label = "Library",
-                    onClick = onNavigateToLibrary,
-                    modifier = Modifier.weight(1f)
+            if (playerUiState.currentTrack != null) {
+                MiniPlayer(
+                    uiState = playerUiState,
+                    onExpand = onNavigateToPlayer,
+                    onPlayPause = { playerViewModel.togglePlayPause() },
+                    onSkipNext = { playerViewModel.skipToNext() },
+                    modifier = Modifier.align(Alignment.BottomCenter)
                 )
             }
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                FeatureButton(
-                    icon = Icons.Default.Search,
-                    label = "Search",
-                    onClick = onNavigateToSearch,
-                    modifier = Modifier.weight(1f)
-                )
-                FeatureButton(
-                    icon = Icons.Default.Settings,
-                    label = "Settings",
-                    onClick = onNavigateToSettings,
-                    modifier = Modifier.weight(1f)
-                )
-            }
-        }
-        if (playerUiState.currentTrack != null) {
-            MiniPlayer(
-                uiState = playerUiState,
-                onExpand = onNavigateToPlayer,
-                onPlayPause = { playerViewModel.togglePlayPause() },
-                onSkipNext = { playerViewModel.skipToNext() },
-                modifier = Modifier.align(Alignment.BottomCenter)
-            )
         }
     }
-}
 }
 
 @Composable

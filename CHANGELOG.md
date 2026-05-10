@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [beta-2] - 2026-05-10
+
+### Added
+- Added `OldUiLibraryViewModel` — a dedicated ViewModel for the old UI library that always reads from `MusicRepository` directly, ensuring old UI library data is fully isolated from New UI profile-based data.
+
+### Changed
+- Renamed `viewModel` parameter to `libraryViewModel` in `LibraryScreen` for clarity and to avoid shadowing conflicts.
+- Updated `NavGraph` to explicitly instantiate `LibraryViewModel` and forward it to `LibraryScreen` rather than relying on implicit Hilt scoping.
+- Fixed indentation of composable layout blocks in `NewUiHomeScreen` and removed unused `PlayerState` import.
+
+---
+
 ## [beta-1] - 2026-05-09
 
 ### Added

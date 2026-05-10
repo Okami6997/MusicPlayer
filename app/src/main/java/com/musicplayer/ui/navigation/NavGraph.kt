@@ -8,6 +8,7 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navDeepLink
 import com.musicplayer.ui.home.HomeScreen
 import com.musicplayer.ui.library.LibraryScreen
+import com.musicplayer.ui.library.LibraryViewModel
 import com.musicplayer.ui.library.AlbumDetailScreen
 import com.musicplayer.ui.library.ArtistDetailScreen
 import com.musicplayer.ui.library.PlaylistDetailScreen
@@ -64,6 +65,7 @@ fun MusicPlayerNavGraph(
         }
         composable(Screen.Library.route) {
             val playerViewModel: PlayerViewModel = hiltViewModel()
+            val libraryViewModel: LibraryViewModel = hiltViewModel()
             LibraryScreen(
                 onNavigateToPlayer = { navController.navigate(Screen.Player.route) },
                 onNavigateToAlbum = { albumId ->
@@ -76,7 +78,8 @@ fun MusicPlayerNavGraph(
                     navController.navigate(Screen.PlaylistDetail.createRoute(playlistId))
                 },
                 onNavigateBack = { navController.popBackStack() },
-                playerViewModel = playerViewModel
+                playerViewModel = playerViewModel,
+                libraryViewModel = libraryViewModel
             )
         }
         composable(Screen.AlbumDetail.route) { backStackEntry ->
