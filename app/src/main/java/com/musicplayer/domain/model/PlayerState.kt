@@ -38,6 +38,7 @@ data class PlayerUiState(
     val castDevice: String? = null,    // non-null means cast is active
     val lyrics: Lyrics? = null,
     val currentLyricsLineIndex: Int = -1,
+    val currentWordIndex: Int = -1,  // Word progress within current line (-1 if no words)
     val showLyrics: Boolean = false,
     val showQueue: Boolean = false
 )

@@ -22,11 +22,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.BlurredEdgeTreatment
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -271,6 +274,7 @@ private fun PlayerContent(
             LyricsView(
                 lyrics = uiState.lyrics!!,
                 currentLineIndex = uiState.currentLyricsLineIndex,
+                currentWordIndex = uiState.currentWordIndex,
                 onLineClick = { timeMs -> viewModel.seekTo(timeMs) },
                 modifier = Modifier
                     .weight(1f)
@@ -443,6 +447,7 @@ private fun Long.toTimeString(): String {
 private fun LyricsView(
     lyrics: Lyrics,
     currentLineIndex: Int,
+    currentWordIndex: Int = -1,
     onLineClick: (Long) -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -472,6 +477,7 @@ private fun LyricsView(
             itemsIndexed(lyrics.lines) { index, line ->
                 val isActive = lyrics.isSynced && index == currentLineIndex
                 val isPreviousActive = lyrics.isSynced && index == currentLineIndex - 1
+                val hasWords = line.words.isNotEmpty()
 
                 // Animate color transition
                 val textColor by animateColorAsState(
@@ -505,27 +511,126 @@ private fun LyricsView(
                     label = "lyricsAlpha"
                 )
 
-                Text(
-                    text = line.text.ifEmpty { "♪" },
-                    style = MaterialTheme.typography.bodyLarge.copy(
-                        fontSize = if (isActive) MaterialTheme.typography.bodyLarge.fontSize * 1.1f
-                                   else MaterialTheme.typography.bodyLarge.fontSize
-                    ),
-                    fontWeight = if (isActive) FontWeight.Bold else FontWeight.Normal,
-                    color = textColor.copy(alpha = alpha),
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .graphicsLayer {
-                            scaleX = scale
-                            scaleY = scale
-                        }
-                        .clickable(enabled = lyrics.isSynced && line.timeMs >= 0) {
-                            onLineClick(line.timeMs)
-                        }
-                        .padding(vertical = 12.dp)
-                )
+                // Render words with wavy flow or regular text
+                if (hasWords && isActive) {
+                    // Wavy flow - render each word with individual animation
+                    FlowingLyricsLine(
+                        words = line.words,
+                        currentWordIndex = currentWordIndex,
+                        onWordClick = { wordStartTime ->
+                            onLineClick(wordStartTime)
+                        },
+                        modifier = Modifier
+                            .wrapContentWidth(Alignment.CenterHorizontally)
+                            .graphicsLayer {
+                                scaleX = scale
+                                scaleY = scale
+                            }
+                            .clickable(enabled = lyrics.isSynced && line.timeMs >= 0) {
+                                onLineClick(line.timeMs)
+                            }
+                            .padding(vertical = 12.dp)
+                    )
+                } else {
+                    // Regular text rendering (for inactive lines or lines without word data)
+                    Text(
+                        text = line.text.ifEmpty { "♪" },
+                        style = MaterialTheme.typography.bodyLarge.copy(
+                            fontSize = if (isActive) MaterialTheme.typography.bodyLarge.fontSize * 1.1f
+                                       else MaterialTheme.typography.bodyLarge.fontSize
+                        ),
+                        fontWeight = if (isActive) FontWeight.Bold else FontWeight.Normal,
+                        color = textColor.copy(alpha = alpha),
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .graphicsLayer {
+                                scaleX = scale
+                                scaleY = scale
+                            }
+                            .clickable(enabled = lyrics.isSynced && line.timeMs >= 0) {
+                                onLineClick(line.timeMs)
+                            }
+                            .padding(vertical = 12.dp)
+                    )
+                }
             }
         }
     }
+}
+
+/**
+ * Renders lyrics words with wavy flow animation - each word animates as it plays
+ * Uses a single Text composable with AnnotatedString for proper text wrapping
+ */
+@Composable
+private fun FlowingLyricsLine(
+    words: List<com.musicplayer.domain.model.LyricsWord>,
+    currentWordIndex: Int,
+    onWordClick: (Long) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    // Animate the overall state for the line
+    val isAnyWordActive = currentWordIndex >= 0
+
+    val lineColor by animateColorAsState(
+        targetValue = if (isAnyWordActive) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+        animationSpec = tween(durationMillis = 150),
+        label = "lineColor"
+    )
+
+    // Build annotated string with per-word styling
+    // This allows proper text wrapping while maintaining word-level highlighting
+    val annotatedString = buildAnnotatedString {
+        words.forEachIndexed { index, word ->
+            val isCurrentWord = index == currentWordIndex
+            val isPastWord = index < currentWordIndex
+
+            val color = when {
+                isCurrentWord -> MaterialTheme.colorScheme.primary
+                isPastWord -> MaterialTheme.colorScheme.primary.copy(alpha = 0.7f)
+                else -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f)
+            }
+
+            pushStyle(
+                SpanStyle(
+                    color = color,
+                    fontWeight = when {
+                        isCurrentWord -> FontWeight.Bold
+                        isPastWord -> FontWeight.SemiBold
+                        else -> FontWeight.Normal
+                    }
+                )
+            )
+            append(word.word)
+            pop()
+
+            // Add space between words (except for last word)
+            if (index < words.lastIndex) {
+                append(" ")
+            }
+        }
+    }
+
+    // Handle word click by finding which word was tapped
+    // This is a simplified approach - click detects on the whole line
+    val clickableModifier = if (words.isNotEmpty() && currentWordIndex >= 0) {
+        Modifier.clickable {
+            words.getOrNull(currentWordIndex)?.let { onWordClick(it.startTimeMs) }
+        }
+    } else {
+        Modifier
+    }
+
+    Text(
+        text = annotatedString,
+        style = MaterialTheme.typography.bodyLarge.copy(
+            fontSize = MaterialTheme.typography.bodyLarge.fontSize * 1.1f
+        ),
+        textAlign = TextAlign.Center,
+        modifier = modifier
+            .fillMaxWidth()
+            .then(clickableModifier)
+            .padding(vertical = 12.dp)
+    )
 }

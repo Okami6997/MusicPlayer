@@ -42,7 +42,7 @@ For individual bug reports, please open a GitHub issue on the repository and ref
 - [ ] Cloud Drive (Google Drive, Dropbox, OneDrive, WebDAV)
 - [ ] Smart playlists / auto-playlists
 - [ ] Last.fm scrobbling
-- [ ] Lyrics display (LRC / synced)
+- [x] Lyrics display (LRC / synced) — word-by-word sync with animated highlighting
 
 ### UI / UX
 - [ ] Animated album art transitions

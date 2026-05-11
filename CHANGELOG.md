@@ -17,6 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 - Fixed lyrics not loading for profile-based tracks in the new UI. Added `sourceType` field to `ProfileTrackEntity` and updated `LyricsLoader` to look up profiles when track source is not found in MediaSource table.
 - Fixed lyrics highlighting regression - now immediately calculates current line index when lyrics are loaded.
+- Fixed lyrics overflow in word-by-word sync mode - now uses AnnotatedString for proper text wrapping, preventing lyrics from going outside the screen when lines are long.
 - Fixed download URL 404 error - DownloadClient now properly handles URLs with/without `/api/` suffix.
 - Fixed search functionality in new UI - now uses ProfileMusicRepository when a profile is selected.
 - Fixed Recently Added not showing tracks in old UI - HomeViewModel now uses profile-based tracks when available.

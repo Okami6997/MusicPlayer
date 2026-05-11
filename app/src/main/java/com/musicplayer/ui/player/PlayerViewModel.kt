@@ -160,7 +160,7 @@ class PlayerViewModel @Inject constructor(
     private fun loadLyrics(track: Track) {
         lyricsJob?.cancel()
         lyricsJob = viewModelScope.launch {
-            _uiState.update { it.copy(lyrics = null, currentLyricsLineIndex = -1) }
+            _uiState.update { it.copy(lyrics = null, currentLyricsLineIndex = -1, currentWordIndex = -1) }
             val lyrics = lyricsLoader.loadLyrics(track)
             // Update lyrics and immediately calculate current line index based on current player position
             val currentPos = try {
@@ -171,7 +171,10 @@ class PlayerViewModel @Inject constructor(
             val lineIndex = if (lyrics != null && lyrics.isSynced) {
                 findCurrentLyricsLine(currentPos, lyrics)
             } else -1
-            _uiState.update { it.copy(lyrics = lyrics, currentLyricsLineIndex = lineIndex) }
+            val wordIndex = if (lineIndex >= 0 && lyrics != null && lyrics.lines[lineIndex].words.isNotEmpty()) {
+                findCurrentWordIndex(currentPos, lyrics.lines[lineIndex])
+            } else -1
+            _uiState.update { it.copy(lyrics = lyrics, currentLyricsLineIndex = lineIndex, currentWordIndex = wordIndex) }
         }
     }
 
@@ -185,12 +188,33 @@ class PlayerViewModel @Inject constructor(
                 val lineIndex = if (lyrics != null && lyrics.isSynced) {
                     findCurrentLyricsLine(posMs, lyrics)
                 } else -1
+
+                // Calculate word progress within current line for wavy flow
+                val wordIndex = if (lineIndex >= 0 && lyrics != null) {
+                    findCurrentWordIndex(posMs, lyrics.lines[lineIndex])
+                } else -1
+
                 _uiState.update {
-                    it.copy(currentPositionMs = posMs, currentLyricsLineIndex = lineIndex)
+                    it.copy(
+                        currentPositionMs = posMs,
+                        currentLyricsLineIndex = lineIndex,
+                        currentWordIndex = wordIndex
+                    )
                 }
-                delay(200)
+                delay(100)
             }
         }
+    }
+
+    private fun findCurrentWordIndex(positionMs: Long, line: com.musicplayer.domain.model.LyricsLine): Int {
+        if (line.words.isEmpty()) return -1
+        for (i in line.words.indices) {
+            if (positionMs >= line.words[i].startTimeMs && positionMs < line.words[i].endTimeMs) {
+                return i
+            }
+        }
+        // If past all words, return last word index
+        return if (positionMs >= line.words.last().endTimeMs) line.words.size - 1 else -1
     }
 
     private fun findCurrentLyricsLine(positionMs: Long, lyrics: Lyrics): Int {
