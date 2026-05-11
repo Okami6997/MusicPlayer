@@ -3,8 +3,10 @@ package com.musicplayer.ui.search
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.musicplayer.data.repository.MusicRepository
+import com.musicplayer.data.repository.ProfileMusicRepository
 import com.musicplayer.data.repository.DownloadRepository
 import com.musicplayer.domain.model.Track
+import com.musicplayer.profile.ProfileManager
 import com.musicplayer.service.PlayerHolder
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -23,6 +25,8 @@ data class SearchUiState(
 @HiltViewModel
 class SearchViewModel @Inject constructor(
     private val repository: MusicRepository,
+    private val profileMusicRepository: ProfileMusicRepository,
+    private val profileManager: ProfileManager,
     private val playerHolder: PlayerHolder,
     private val downloadRepository: DownloadRepository
 ) : ViewModel() {
@@ -32,20 +36,28 @@ class SearchViewModel @Inject constructor(
     private val _isLoading = MutableStateFlow(false)
     val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
 
-    private val _searchResults = _query
-        .debounce(300)
-        .distinctUntilChanged()
-        .flatMapLatest { q ->
-            if (q.isBlank()) {
-                _isLoading.value = false
-                flowOf(emptyList<Track>())
-            } else {
-                repository.searchTracks(q)
-                    .onStart { _isLoading.value = true }
-                    .onEach { _isLoading.value = false }
-            }
+    // Use profile-based search when a profile is selected, otherwise fall back to old track table
+    private val _searchResults = combine(
+        _query,
+        profileManager.selectedProfile
+    ) { query, profile ->
+        Pair(query, profile)
+    }.flatMapLatest { (query, profile) ->
+        if (query.isBlank()) {
+            _isLoading.value = false
+            flowOf(emptyList<Track>())
+        } else if (profile != null) {
+            // Use profile-based search
+            profileMusicRepository.searchTracks(query)
+                .onStart { _isLoading.value = true }
+                .onEach { _isLoading.value = false }
+        } else {
+            // Fall back to old track table search
+            repository.searchTracks(query)
+                .onStart { _isLoading.value = true }
+                .onEach { _isLoading.value = false }
         }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     val uiState: StateFlow<SearchUiState> = combine(
         _query,

@@ -2,12 +2,14 @@ package com.musicplayer.ui.newui
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import androidx.work.*
 import com.musicplayer.data.repository.MusicRepository
 import com.musicplayer.data.repository.ProfileMusicRepository
 import com.musicplayer.data.repository.ProfileRepository
 import com.musicplayer.profile.MediaServiceType
 import com.musicplayer.profile.Profile
 import com.musicplayer.profile.toMediaSource
+import com.musicplayer.worker.ProfileSyncWorker
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
@@ -26,7 +28,8 @@ data class ProfileListUiState(
 class ProfileListViewModel @Inject constructor(
     private val profileRepository: ProfileRepository,
     private val musicRepository: MusicRepository,
-    private val profileMusicRepository: ProfileMusicRepository
+    private val profileMusicRepository: ProfileMusicRepository,
+    private val workManager: WorkManager
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(ProfileListUiState())
@@ -105,16 +108,41 @@ class ProfileListViewModel @Inject constructor(
 
     fun syncProfile(profile: Profile) {
         if (_uiState.value.syncingProfileId != null) return // already syncing one
+
+        val inputData = workDataOf(
+            ProfileSyncWorker.KEY_PROFILE_ID to profile.id,
+            ProfileSyncWorker.KEY_PROFILE_NAME to profile.name
+        )
+
+        val syncWork = OneTimeWorkRequestBuilder<ProfileSyncWorker>()
+            .setInputData(inputData)
+            .addTag("sync_profile_${profile.id}")
+            .build()
+
+        workManager.enqueueUniqueWork(
+            "sync_profile_${profile.id}",
+            ExistingWorkPolicy.REPLACE,
+            syncWork
+        )
+
+        _uiState.update { it.copy(syncingProfileId = profile.id, syncMessage = null) }
+
         viewModelScope.launch {
-            _uiState.update { it.copy(syncingProfileId = profile.id, syncMessage = null) }
-            try {
-                val source = profile.toMediaSource()
-                val tracks = musicRepository.fetchTracksFromSource(source)
-                profileMusicRepository.clearTracksForProfile(profile.id)
-                profileMusicRepository.saveTracks(profile.id, tracks)
-                _uiState.update { it.copy(syncingProfileId = null, syncMessage = "Synced ${tracks.size} tracks from \"${profile.name}\"") }
-            } catch (e: Exception) {
-                _uiState.update { it.copy(syncingProfileId = null, syncMessage = "Sync failed: ${e.message}") }
+            workManager.getWorkInfoByIdFlow(syncWork.id).collect { workInfo ->
+                when (workInfo?.state) {
+                    WorkInfo.State.SUCCEEDED -> {
+                        val trackCount = workInfo.outputData.getInt(ProfileSyncWorker.KEY_TRACK_COUNT, 0)
+                        _uiState.update { it.copy(syncingProfileId = null, syncMessage = "Synced $trackCount tracks from \"${profile.name}\"") }
+                    }
+                    WorkInfo.State.FAILED -> {
+                        val errorMessage = workInfo.outputData.getString(ProfileSyncWorker.KEY_ERROR_MESSAGE) ?: "Unknown error"
+                        _uiState.update { it.copy(syncingProfileId = null, syncMessage = "Sync failed: $errorMessage") }
+                    }
+                    WorkInfo.State.RUNNING -> {
+                        _uiState.update { it.copy(syncingProfileId = profile.id, syncMessage = "Syncing ${profile.name}...") }
+                    }
+                    else -> {}
+                }
             }
         }
     }

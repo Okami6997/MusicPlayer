@@ -2,6 +2,7 @@ package com.musicplayer.ui.library
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import androidx.work.*
 import com.musicplayer.data.repository.MusicRepository
 import com.musicplayer.data.repository.DownloadRepository
 import com.musicplayer.data.repository.ProfileMusicRepository
@@ -12,6 +13,7 @@ import com.musicplayer.domain.model.Track
 import com.musicplayer.profile.ProfileManager
 import com.musicplayer.profile.toMediaSource
 import com.musicplayer.service.PlayerHolder
+import com.musicplayer.worker.ProfileSyncWorker
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.*
@@ -32,7 +34,8 @@ class LibraryViewModel @Inject constructor(
     private val profileMusicRepository: ProfileMusicRepository,
     private val profileManager: ProfileManager,
     private val playerHolder: PlayerHolder,
-    private val downloadRepository: DownloadRepository
+    private val downloadRepository: DownloadRepository,
+    private val workManager: WorkManager
 ) : ViewModel() {
 
     @OptIn(ExperimentalCoroutinesApi::class)
@@ -96,19 +99,45 @@ class LibraryViewModel @Inject constructor(
             _syncMessage.value = "No profile selected"
             return
         }
+
+        val inputData = workDataOf(
+            ProfileSyncWorker.KEY_PROFILE_ID to profile.id,
+            ProfileSyncWorker.KEY_PROFILE_NAME to profile.name
+        )
+
+        val syncWork = OneTimeWorkRequestBuilder<ProfileSyncWorker>()
+            .setInputData(inputData)
+            .addTag("sync_profile_${profile.id}")
+            .build()
+
+        workManager.enqueueUniqueWork(
+            "sync_profile_${profile.id}",
+            ExistingWorkPolicy.REPLACE,
+            syncWork
+        )
+
+        _isSyncing.value = true
+        _syncMessage.value = "Syncing ${profile.name}..."
+
         viewModelScope.launch {
-            _isSyncing.value = true
-            _syncMessage.value = null
-            try {
-                val source = profile.toMediaSource()
-                val tracks = repository.fetchTracksFromSource(source)
-                profileMusicRepository.clearTracksForProfile(profile.id)
-                profileMusicRepository.saveTracks(profile.id, tracks)
-                _syncMessage.value = "Synced ${tracks.size} tracks"
-            } catch (e: Exception) {
-                _syncMessage.value = "Sync failed: ${e.message}"
-            } finally {
-                _isSyncing.value = false
+            workManager.getWorkInfoByIdFlow(syncWork.id).collect { workInfo ->
+                when (workInfo?.state) {
+                    WorkInfo.State.SUCCEEDED -> {
+                        val trackCount = workInfo.outputData.getInt(ProfileSyncWorker.KEY_TRACK_COUNT, 0)
+                        _isSyncing.value = false
+                        _syncMessage.value = "Synced $trackCount tracks"
+                    }
+                    WorkInfo.State.FAILED -> {
+                        val errorMessage = workInfo.outputData.getString(ProfileSyncWorker.KEY_ERROR_MESSAGE) ?: "Unknown error"
+                        _isSyncing.value = false
+                        _syncMessage.value = "Sync failed: $errorMessage"
+                    }
+                    WorkInfo.State.RUNNING -> {
+                        _isSyncing.value = true
+                        _syncMessage.value = "Syncing ${profile.name}..."
+                    }
+                    else -> {}
+                }
             }
         }
     }

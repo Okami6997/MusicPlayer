@@ -15,6 +15,9 @@ Cross-platform Android music player for phone, Wear OS, TV, and Auto.
 - Improved empty states, tab row styling, and playback control visuals.
 - Added Download Source configuration from Settings with URL persistence and connectivity testing.
 - Standardized offline/download wording in UI to improve clarity.
+- Added a separate New UI settings screen with profile-related options and a New UI mini-player with direct full-player navigation.
+- Strengthened data isolation by separating New UI profile-based data through `ProfileMusicRepository` and `ProfileTrackEntity`, while old UI library data remains on `TrackEntity` via `OldUiLibraryViewModel`.
+- Fixed download URL construction in `DownloadClient.kt` to avoid 404 responses.
 
 ## Build
 ```bash

@@ -26,13 +26,13 @@ class DownloadClient @Inject constructor() {
         .build()
 
     fun createApi(baseUrl: String): DownloadApi {
-        // Ensure the base URL ends with /api/ for the download service
-        val formattedBaseUrl = when {
-            baseUrl.endsWith("/api/") -> baseUrl
-            baseUrl.endsWith("/api") -> "$baseUrl/"
-            baseUrl.endsWith("/") -> "${baseUrl}api/"
-            else -> "$baseUrl/api/"
+        // The DownloadApi endpoints already include /api/ prefix (e.g., "api/search")
+        // Strip any trailing /api/ or /api to avoid doubling
+        var cleanedUrl = baseUrl.trimEnd('/')
+        if (cleanedUrl.endsWith("/api")) {
+            cleanedUrl = cleanedUrl.substring(0, cleanedUrl.length - 4) // Remove "/api"
         }
+        val formattedBaseUrl = "$cleanedUrl/"
         Timber.d("Creating Download API with base URL: $formattedBaseUrl")
         return Retrofit.Builder()
             .baseUrl(formattedBaseUrl)

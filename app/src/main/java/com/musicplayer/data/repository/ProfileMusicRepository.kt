@@ -174,7 +174,8 @@ class ProfileMusicRepository @Inject constructor(
     /**
      * Save tracks to the current profile.
      */
-    suspend fun saveTracks(profileId: String, tracks: List<Track>) {
+    suspend fun saveTracks(profileId: String, sourceType: MediaSourceType, tracks: List<Track>) {
+        val sourceTypeStr = sourceType.name
         val entities = tracks.map { track ->
             ProfileTrackEntity(
                 id = "${profileId}_${track.id}",
@@ -195,7 +196,8 @@ class ProfileMusicRepository @Inject constructor(
                 sampleRate = track.sampleRate,
                 fileSize = track.fileSize,
                 codec = track.codec,
-                streamUri = track.uri
+                streamUri = track.uri,
+                sourceType = sourceTypeStr
             )
         }
         profileDao.insertTracks(entities)
@@ -223,6 +225,11 @@ class ProfileMusicRepository @Inject constructor(
      * Convert ProfileTrackEntity to domain Track model.
      */
     private fun ProfileTrackEntity.toDomain(): Track {
+        val parsedSourceType = try {
+            MediaSourceType.valueOf(sourceType)
+        } catch (e: Exception) {
+            MediaSourceType.USER
+        }
         return Track(
             id = remoteId,
             title = title,
@@ -243,7 +250,7 @@ class ProfileMusicRepository @Inject constructor(
             uri = streamUri,
             sourceId = profileId,
             sourceName = "Profile",
-            sourceType = MediaSourceType.USER
+            sourceType = parsedSourceType
         )
     }
 }

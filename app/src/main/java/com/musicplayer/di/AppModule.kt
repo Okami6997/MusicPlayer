@@ -2,6 +2,7 @@ package com.musicplayer.di
 
 import android.content.Context
 import androidx.room.Room
+import androidx.work.WorkManager
 import coil.ImageLoader
 import com.musicplayer.data.local.MediaSourceDao
 import com.musicplayer.data.local.MusicDatabase
@@ -62,4 +63,9 @@ object AppModule {
             .followSslRedirects(true)
             .build()
     }
+
+    @Provides
+    @Singleton
+    fun provideWorkManager(@ApplicationContext context: Context): WorkManager =
+        WorkManager.getInstance(context)
 }

@@ -6,10 +6,12 @@ import android.provider.MediaStore
 import com.musicplayer.data.remote.subsonic.SubsonicApi
 import com.musicplayer.data.remote.subsonic.SubsonicClient
 import com.musicplayer.data.repository.MusicRepository
+import com.musicplayer.data.repository.ProfileRepository
 import com.musicplayer.domain.model.Lyrics
 import com.musicplayer.domain.model.MediaSource
 import com.musicplayer.domain.model.MediaSourceType
 import com.musicplayer.domain.model.Track
+import com.musicplayer.profile.toMediaSource
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -32,7 +34,8 @@ import javax.inject.Singleton
 class LyricsLoader @Inject constructor(
     @ApplicationContext private val context: Context,
     private val subsonicClient: SubsonicClient,
-    private val musicRepository: MusicRepository
+    private val musicRepository: MusicRepository,
+    private val profileRepository: ProfileRepository
 ) {
 
     // Cache Retrofit API instances per baseUrl to avoid re-creating
@@ -102,7 +105,22 @@ class LyricsLoader @Inject constructor(
         ) return null
 
         return try {
-            val source = musicRepository.getSourceById(track.sourceId) ?: return null
+            // Try to get source from MediaSource table first
+            var source = musicRepository.getSourceById(track.sourceId)
+
+            // If not found, try to get from Profile table (for profile-based tracks)
+            if (source == null) {
+                val profile = profileRepository.getProfileById(track.sourceId)
+                if (profile != null) {
+                    source = profile.toMediaSource()
+                }
+            }
+
+            if (source == null) {
+                Timber.d("No source found for track: ${track.title}")
+                return null
+            }
+
             val api = getOrCreateSubsonicApi(source)
             val songId = subsonicClient.extractSongId(track)
             val raw = subsonicClient.fetchLyrics(api, source, songId, track.artist, track.title)

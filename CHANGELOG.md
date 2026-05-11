@@ -7,15 +7,49 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [beta-4] - 2026-05-11
+
+### Added
+- Added background sync for both old UI (Sources screen) and new UI (Profile list and Library screens) using WorkManager. Syncing now runs as a background process that continues even when navigating away.
+- Added search functionality to the Library screen - tap the search icon in the top bar to filter tracks, albums, and artists.
+- Added `ProfileSyncWorker` for background profile syncing in the new UI.
+
+### Fixed
+- Fixed lyrics not loading for profile-based tracks in the new UI. Added `sourceType` field to `ProfileTrackEntity` and updated `LyricsLoader` to look up profiles when track source is not found in MediaSource table.
+- Fixed lyrics highlighting regression - now immediately calculates current line index when lyrics are loaded.
+- Fixed download URL 404 error - DownloadClient now properly handles URLs with/without `/api/` suffix.
+- Fixed search functionality in new UI - now uses ProfileMusicRepository when a profile is selected.
+- Fixed Recently Added not showing tracks in old UI - HomeViewModel now uses profile-based tracks when available.
+- Incremented database version to 7 for schema changes (ProfileTrackEntity sourceType column).
+
+### Changed
+- Updated database version from 6 to 7 for ProfileTrackEntity schema changes.
+- Updated `ProfileMusicRepository.saveTracks()` to accept sourceType parameter and properly store the source type with each track.
+- Updated `ProfileTrackEntity` to include `sourceType` field for tracking the original media source type (SUBSONIC, NAVIDROME, JELLYFIN, etc.).
+
+---
+
+## [beta-3] - 2026-05-11
+
+### Added
+- Added background sync for media sources using WorkManager. Syncing a source now runs as a background process that continues even when navigating away from the Sources screen.
+
+---
+
 ## [beta-2] - 2026-05-10
 
 ### Added
 - Added `OldUiLibraryViewModel` — a dedicated ViewModel for the old UI library that always reads from `MusicRepository` directly, ensuring old UI library data is fully isolated from New UI profile-based data.
+- Added `NewUiSettingsScreen` for the New UI, with profile-related settings for Profiles, Appearance, Audio, Offline, Dynamic Color, and Gapless Playback.
+- Added `ProfileMusicRepository` to support profile-isolated music data access using the `ProfileTrackEntity` table.
 
 ### Changed
-- Renamed `viewModel` parameter to `libraryViewModel` in `LibraryScreen` for clarity and to avoid shadowing conflicts.
-- Updated `NavGraph` to explicitly instantiate `LibraryViewModel` and forward it to `LibraryScreen` rather than relying on implicit Hilt scoping.
-- Fixed indentation of composable layout blocks in `NewUiHomeScreen` and removed unused `PlayerState` import.
+- Updated `DownloadClient.kt` to append `/api/` to base URLs when constructing download service URLs, fixing the 404 error for downloads.
+- Modified `NewUiHomeScreen` to add a `MiniPlayer` component when a track is playing and expose an `onNavigateToPlayer` callback.
+- Updated `NewUiNavGraph.kt` to use the new settings screen and pass the player navigation callback.
+- Updated `NavGraph.kt` to use `OldUiLibraryViewModel` for the old UI library.
+- Updated `LibraryScreen.kt` to accept a `libraryViewModel` parameter instead of a generic `viewModel`.
+- Fixed an extra closing brace syntax error in `NewUiHomeScreen.kt`.
 
 ---
 

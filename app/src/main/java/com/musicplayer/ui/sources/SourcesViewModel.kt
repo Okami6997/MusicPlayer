@@ -2,6 +2,7 @@ package com.musicplayer.ui.sources
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import androidx.work.*
 import com.musicplayer.data.repository.MusicRepository
 import com.musicplayer.data.remote.jellyfin.JellyfinApi
 import com.musicplayer.data.remote.jellyfin.JellyfinClient
@@ -11,6 +12,7 @@ import com.musicplayer.data.remote.subsonic.SubsonicApi
 import com.musicplayer.data.remote.subsonic.SubsonicClient
 import com.musicplayer.domain.model.MediaSource
 import com.musicplayer.domain.model.MediaSourceType
+import com.musicplayer.worker.SyncWorker
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
@@ -19,6 +21,7 @@ import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 import timber.log.Timber
+import java.util.UUID
 import java.util.concurrent.TimeUnit
 import javax.inject.Inject
 
@@ -40,11 +43,12 @@ class SourcesViewModel @Inject constructor(
     private val repository: MusicRepository,
     private val subsonicClient: SubsonicClient,
     private val jellyfinClient: JellyfinClient,
-    private val plexClient: PlexClient
+    private val plexClient: PlexClient,
+    private val workManager: WorkManager
 ) : ViewModel() {
 
     private val _scanState = MutableStateFlow(ScanState())
-    
+
     val uiState: StateFlow<SourcesUiState> = combine(
         repository.getAllSources(),
         _scanState
@@ -56,6 +60,8 @@ class SourcesViewModel @Inject constructor(
             scanProgress = scanState.progress
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), SourcesUiState())
+
+    private val _activeWorkIds = MutableStateFlow<Map<String, UUID>>(emptyMap())
 
     private data class ScanState(
         val isScanning: Boolean = false,
@@ -81,13 +87,42 @@ class SourcesViewModel @Inject constructor(
     }
 
     fun scanSource(source: MediaSource) {
+        val inputData = workDataOf(
+            SyncWorker.KEY_SOURCE_ID to source.id,
+            SyncWorker.KEY_SOURCE_NAME to source.name
+        )
+
+        val syncWork = OneTimeWorkRequestBuilder<SyncWorker>()
+            .setInputData(inputData)
+            .addTag("sync_${source.id}")
+            .build()
+
+        workManager.enqueueUniqueWork(
+            "sync_${source.id}",
+            ExistingWorkPolicy.REPLACE,
+            syncWork
+        )
+
+        _activeWorkIds.update { it + (source.id to syncWork.id) }
+
+        _scanState.update { it.copy(isScanning = true, progress = "Syncing ${source.name}...") }
+
         viewModelScope.launch {
-            _scanState.update { it.copy(isScanning = true, progress = "Syncing ${source.name}...") }
-            try {
-                val tracks = repository.syncSource(source)
-                _scanState.update { it.copy(isScanning = false, progress = "Found ${tracks.size} tracks") }
-            } catch (e: Exception) {
-                _scanState.update { it.copy(isScanning = false, progress = "Error: ${e.message}") }
+            workManager.getWorkInfoByIdFlow(syncWork.id).collect { workInfo ->
+                when (workInfo?.state) {
+                    WorkInfo.State.SUCCEEDED -> {
+                        val trackCount = workInfo.outputData.getInt(SyncWorker.KEY_TRACK_COUNT, 0)
+                        _scanState.update { it.copy(isScanning = false, progress = "Found $trackCount tracks") }
+                    }
+                    WorkInfo.State.FAILED -> {
+                        val errorMessage = workInfo.outputData.getString(SyncWorker.KEY_ERROR_MESSAGE) ?: "Unknown error"
+                        _scanState.update { it.copy(isScanning = false, progress = "Error: $errorMessage") }
+                    }
+                    WorkInfo.State.RUNNING -> {
+                        _scanState.update { it.copy(isScanning = true, progress = "Syncing ${source.name}...") }
+                    }
+                    else -> {}
+                }
             }
         }
     }

@@ -1,5 +1,10 @@
 package com.musicplayer.ui.player
 
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -8,6 +13,7 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.PlaylistAdd
+import androidx.compose.material.icons.automirrored.filled.QueueMusic
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -18,6 +24,7 @@ import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -124,7 +131,7 @@ fun PlayerScreen(
                         }
                         IconButton(onClick = { viewModel.toggleQueue() }) {
                             Icon(
-                                imageVector = Icons.Default.QueueMusic,
+                                imageVector = Icons.AutoMirrored.Filled.QueueMusic,
                                 contentDescription = "Queue",
                                 tint = if (uiState.showQueue)
                                     MaterialTheme.colorScheme.primary
@@ -441,10 +448,9 @@ private fun LyricsView(
 ) {
     val listState = rememberLazyListState()
 
-    // Auto-scroll to current line
+    // Auto-scroll to current line with smooth animation
     LaunchedEffect(currentLineIndex) {
         if (currentLineIndex >= 0 && lyrics.isSynced) {
-            // Centre the active line in the visible area
             listState.animateScrollToItem(
                 index = currentLineIndex,
                 scrollOffset = -200
@@ -465,24 +471,59 @@ private fun LyricsView(
         ) {
             itemsIndexed(lyrics.lines) { index, line ->
                 val isActive = lyrics.isSynced && index == currentLineIndex
+                val isPreviousActive = lyrics.isSynced && index == currentLineIndex - 1
+
+                // Animate color transition
+                val textColor by animateColorAsState(
+                    targetValue = when {
+                        isActive -> MaterialTheme.colorScheme.primary
+                        isPreviousActive -> MaterialTheme.colorScheme.primary.copy(alpha = 0.6f)
+                        else -> MaterialTheme.colorScheme.onSurfaceVariant
+                    },
+                    animationSpec = tween(durationMillis = 300),
+                    label = "lyricsColor"
+                )
+
+                // Animate scale for active line
+                val scale by animateFloatAsState(
+                    targetValue = if (isActive) 1.05f else 1f,
+                    animationSpec = spring(
+                        dampingRatio = Spring.DampingRatioMediumBouncy,
+                        stiffness = Spring.StiffnessLow
+                    ),
+                    label = "lyricsScale"
+                )
+
+                val alpha by animateFloatAsState(
+                    targetValue = when {
+                        isActive -> 1f
+                        isPreviousActive -> 0.7f
+                        index < currentLineIndex -> 0.4f
+                        else -> 1f
+                    },
+                    animationSpec = tween(durationMillis = 300),
+                    label = "lyricsAlpha"
+                )
+
                 Text(
                     text = line.text.ifEmpty { "♪" },
-                    style = if (isActive)
-                        MaterialTheme.typography.bodyLarge
-                    else
-                        MaterialTheme.typography.bodyMedium,
+                    style = MaterialTheme.typography.bodyLarge.copy(
+                        fontSize = if (isActive) MaterialTheme.typography.bodyLarge.fontSize * 1.1f
+                                   else MaterialTheme.typography.bodyLarge.fontSize
+                    ),
                     fontWeight = if (isActive) FontWeight.Bold else FontWeight.Normal,
-                    color = if (isActive)
-                        MaterialTheme.colorScheme.primary
-                    else
-                        MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = textColor.copy(alpha = alpha),
                     textAlign = TextAlign.Center,
                     modifier = Modifier
                         .fillMaxWidth()
+                        .graphicsLayer {
+                            scaleX = scale
+                            scaleY = scale
+                        }
                         .clickable(enabled = lyrics.isSynced && line.timeMs >= 0) {
                             onLineClick(line.timeMs)
                         }
-                        .padding(vertical = 8.dp)
+                        .padding(vertical = 12.dp)
                 )
             }
         }

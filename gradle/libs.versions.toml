@@ -17,6 +17,7 @@ coil = "2.7.0"
 castFramework = "21.5.0"
 mediaRouter = "1.7.0"
 hiltNavigationCompose = "1.2.0"
+hiltWork = "1.2.0"
 wearCompose = "1.4.0"
 wearInput = "1.1.0"
 tvCompose = "1.0.0"
@@ -62,6 +63,8 @@ androidx-documentfile = { group = "androidx.documentfile", name = "documentfile"
 hilt-android = { group = "com.google.dagger", name = "hilt-android", version.ref = "hilt" }
 hilt-android-compiler = { group = "com.google.dagger", name = "hilt-android-compiler", version.ref = "hilt" }
 hilt-navigation-compose = { group = "androidx.hilt", name = "hilt-navigation-compose", version.ref = "hiltNavigationCompose" }
+hilt-work = { group = "androidx.hilt", name = "hilt-work", version.ref = "hiltWork" }
+hilt-work-compiler = { group = "androidx.hilt", name = "hilt-compiler", version.ref = "hiltWork" }
 retrofit = { group = "com.squareup.retrofit2", name = "retrofit", version.ref = "retrofit" }
 retrofit-gson = { group = "com.squareup.retrofit2", name = "converter-gson", version.ref = "retrofit" }
 okhttp = { group = "com.squareup.okhttp3", name = "okhttp", version.ref = "okhttp" }

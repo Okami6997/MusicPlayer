@@ -36,5 +36,6 @@ data class ProfileTrackEntity(
     val fileSize: Long = 0L,
     val codec: String = "",
     val streamUri: String = "",
+    val sourceType: String = "USER", // The actual source type (SUBSONIC, NAVIDROME, JELLYFIN, etc.)
     val createdAt: Long = System.currentTimeMillis()
 )

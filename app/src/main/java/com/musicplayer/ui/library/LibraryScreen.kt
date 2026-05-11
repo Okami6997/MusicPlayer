@@ -12,12 +12,14 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.LibraryMusic
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -50,6 +52,8 @@ fun LibraryScreen(
     val syncMessage by libraryViewModel.syncMessage.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
     var selectedTab by remember { mutableIntStateOf(0) }
+    var isSearchActive by remember { mutableStateOf(false) }
+    var searchQuery by remember { mutableStateOf("") }
     val tabs = listOf("Tracks", "Albums", "Artists", "Playlists")
     val context = LocalContext.current
 
@@ -141,13 +145,38 @@ fun LibraryScreen(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
-                title = { Text("Library") },
+                title = {
+                    if (isSearchActive) {
+                        OutlinedTextField(
+                            value = searchQuery,
+                            onValueChange = { searchQuery = it },
+                            placeholder = { Text("Search library...") },
+                            singleLine = true,
+                            modifier = Modifier.fillMaxWidth(),
+                            trailingIcon = {
+                                IconButton(onClick = {
+                                    isSearchActive = false
+                                    searchQuery = ""
+                                }) {
+                                    Icon(Icons.Default.Close, contentDescription = "Close search")
+                                }
+                            }
+                        )
+                    } else {
+                        Text("Library")
+                    }
+                },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
                         Icon(Icons.Default.ArrowBack, contentDescription = "Back")
                     }
                 },
                 actions = {
+                    if (!isSearchActive) {
+                        IconButton(onClick = { isSearchActive = true }) {
+                            Icon(Icons.Default.Search, contentDescription = "Search")
+                        }
+                    }
                     if (isSyncing) {
                         CircularProgressIndicator(
                             modifier = Modifier
@@ -199,11 +228,24 @@ fun LibraryScreen(
 
             when (selectedTab) {
                 0 -> {
-                    if (uiState.tracks.isEmpty()) {
-                        EmptyLibraryState(onScanClick = { checkAndScanLocal() })
+                    val filteredTracks = if (searchQuery.isBlank()) {
+                        uiState.tracks
+                    } else {
+                        val query = searchQuery.lowercase()
+                        uiState.tracks.filter { track ->
+                            track.title.lowercase().contains(query) ||
+                            track.artist.lowercase().contains(query) ||
+                            track.album.lowercase().contains(query)
+                        }
+                    }
+                    if (filteredTracks.isEmpty()) {
+                        EmptyLibraryState(
+                            onScanClick = { checkAndScanLocal() },
+                            message = if (searchQuery.isNotBlank()) "No tracks match your search" else "No music found"
+                        )
                     } else {
                         LazyColumn(modifier = Modifier.weight(1f)) {
-                            items(uiState.tracks) { track ->
+                            items(filteredTracks) { track ->
                                 TrackListItem(
                                     track = track,
                                     onClick = {
@@ -218,11 +260,23 @@ fun LibraryScreen(
                     }
                 }
                 1 -> {
-                    if (uiState.albums.isEmpty()) {
-                        EmptyLibraryState(onScanClick = { checkAndScanLocal() })
+                    val filteredAlbums = if (searchQuery.isBlank()) {
+                        uiState.albums
+                    } else {
+                        val query = searchQuery.lowercase()
+                        uiState.albums.filter { album ->
+                            album.title.lowercase().contains(query) ||
+                            album.artist.lowercase().contains(query)
+                        }
+                    }
+                    if (filteredAlbums.isEmpty()) {
+                        EmptyLibraryState(
+                            onScanClick = { checkAndScanLocal() },
+                            message = if (searchQuery.isNotBlank()) "No albums match your search" else "No music found"
+                        )
                     } else {
                         LazyColumn(modifier = Modifier.weight(1f)) {
-                            items(uiState.albums) { album ->
+                            items(filteredAlbums) { album ->
                                 ListItem(
                                     modifier = Modifier.clickable { onNavigateToAlbum(album.id) },
                                     headlineContent = { Text(album.title) },
@@ -238,11 +292,22 @@ fun LibraryScreen(
                     }
                 }
                 2 -> {
-                    if (uiState.artists.isEmpty()) {
-                        EmptyLibraryState(onScanClick = { checkAndScanLocal() })
+                    val filteredArtists = if (searchQuery.isBlank()) {
+                        uiState.artists
+                    } else {
+                        val query = searchQuery.lowercase()
+                        uiState.artists.filter { artist ->
+                            artist.name.lowercase().contains(query)
+                        }
+                    }
+                    if (filteredArtists.isEmpty()) {
+                        EmptyLibraryState(
+                            onScanClick = { checkAndScanLocal() },
+                            message = if (searchQuery.isNotBlank()) "No artists match your search" else "No music found"
+                        )
                     } else {
                         LazyColumn(modifier = Modifier.weight(1f)) {
-                            items(uiState.artists) { artist ->
+                            items(filteredArtists) { artist ->
                                 ListItem(
                                     modifier = Modifier.clickable { onNavigateToArtist(artist.name) },
                                     headlineContent = { Text(artist.name) },

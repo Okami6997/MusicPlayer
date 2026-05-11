@@ -162,7 +162,16 @@ class PlayerViewModel @Inject constructor(
         lyricsJob = viewModelScope.launch {
             _uiState.update { it.copy(lyrics = null, currentLyricsLineIndex = -1) }
             val lyrics = lyricsLoader.loadLyrics(track)
-            _uiState.update { it.copy(lyrics = lyrics, currentLyricsLineIndex = -1) }
+            // Update lyrics and immediately calculate current line index based on current player position
+            val currentPos = try {
+                playerHolder.currentPlayer.currentPosition
+            } catch (e: Exception) {
+                0L
+            }
+            val lineIndex = if (lyrics != null && lyrics.isSynced) {
+                findCurrentLyricsLine(currentPos, lyrics)
+            } else -1
+            _uiState.update { it.copy(lyrics = lyrics, currentLyricsLineIndex = lineIndex) }
         }
     }
 
@@ -179,7 +188,7 @@ class PlayerViewModel @Inject constructor(
                 _uiState.update {
                     it.copy(currentPositionMs = posMs, currentLyricsLineIndex = lineIndex)
                 }
-                delay(500)
+                delay(200)
             }
         }
     }
