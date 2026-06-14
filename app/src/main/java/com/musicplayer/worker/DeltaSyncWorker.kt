@@ -9,14 +9,22 @@ import dagger.hilt.InstallIn
 import dagger.hilt.android.EntryPointAccessors
 import dagger.hilt.components.SingletonComponent
 
-class SyncWorker(
+/**
+ * Background worker that performs a **delta sync** for a single old-UI
+ * [com.musicplayer.domain.model.MediaSource]. Fetches only the tracks that
+ * have changed since the source's `lastDeltaSyncAt` timestamp, diffs them
+ * against the local cache, and applies inserts/updates/deletes.
+ *
+ * Falls back to a full sync if the source has never been fully synced.
+ */
+class DeltaSyncWorker(
     context: Context,
     workerParams: WorkerParameters
 ) : CoroutineWorker(context, workerParams) {
 
     @EntryPoint
     @InstallIn(SingletonComponent::class)
-    interface SyncWorkerEntryPoint {
+    interface DeltaSyncWorkerEntryPoint {
         fun repository(): MusicRepository
     }
 
@@ -27,25 +35,21 @@ class SyncWorker(
         return try {
             val entryPoint = EntryPointAccessors.fromApplication(
                 applicationContext,
-                SyncWorkerEntryPoint::class.java
+                DeltaSyncWorkerEntryPoint::class.java
             )
             val repository = entryPoint.repository()
 
             val source = repository.getSourceById(sourceId)
                 ?: return Result.failure()
 
-            val tracks = repository.syncSource(source)
-            val now = System.currentTimeMillis()
-            repository.saveSource(
-                source.copy(
-                    lastFullSyncAt = now,
-                    lastDeltaSyncAt = if (source.lastDeltaSyncAt > 0L) source.lastDeltaSyncAt else now
-                )
-            )
+            val result = repository.deltaSyncSource(source)
 
             Result.success(
                 androidx.work.Data.Builder()
-                    .putInt(KEY_TRACK_COUNT, tracks.size)
+                    .putInt(KEY_ADDED, result.added)
+                    .putInt(KEY_UPDATED, result.updated)
+                    .putInt(KEY_REMOVED, result.removed)
+                    .putInt(KEY_TOTAL_AFTER, result.totalAfter)
                     .putString(KEY_SOURCE_NAME, sourceName)
                     .build()
             )
@@ -61,7 +65,10 @@ class SyncWorker(
     companion object {
         const val KEY_SOURCE_ID = "source_id"
         const val KEY_SOURCE_NAME = "source_name"
-        const val KEY_TRACK_COUNT = "track_count"
+        const val KEY_ADDED = "added"
+        const val KEY_UPDATED = "updated"
+        const val KEY_REMOVED = "removed"
+        const val KEY_TOTAL_AFTER = "total_after"
         const val KEY_ERROR_MESSAGE = "error_message"
     }
 }

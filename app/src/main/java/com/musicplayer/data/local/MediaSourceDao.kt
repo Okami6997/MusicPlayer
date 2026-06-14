@@ -16,6 +16,14 @@ interface MediaSourceDao {
 
     @Query("DELETE FROM media_sources WHERE id = :id")
     suspend fun deleteSource(id: String)
+
+    // ── Delta sync helpers ─────────────────────────────────────────────────────
+
+    @Query("UPDATE media_sources SET lastDeltaSyncAt = :timestamp WHERE id = :id")
+    suspend fun updateLastDeltaSyncTime(id: String, timestamp: Long)
+
+    @Query("UPDATE media_sources SET lastFullSyncAt = :timestamp WHERE id = :id")
+    suspend fun updateLastFullSyncTime(id: String, timestamp: Long)
 }
 
 @Dao

@@ -27,5 +27,9 @@ data class TrackEntity(
     val sampleRate: Int,
     val fileSize: Long,
     val codec: String,
-    val extension: String
+    val extension: String,
+    // Timestamp (epoch millis) reported by the remote server for when this track was last modified.
+    // 0 means "unknown / never synced via delta". Used by the delta sync algorithm to skip
+    // tracks that haven't changed since the last sync.
+    val remoteUpdatedAt: Long = 0L
 )

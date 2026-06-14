@@ -16,6 +16,7 @@ For individual bug reports, please open a GitHub issue on the repository and ref
 | 5 | `tv` | TV module uses placeholder content; library browsing not yet wired to the shared database | Use phone app |
 | 6 | `auto` | Android Auto CarApp screen items are static placeholders | Use phone app |
 | 7 | `app` | Samsung/media output notification visibility may be inconsistent when other media players are active | Verified improvement in v0.0.4 using Media3 notification provider and startup foreground notification |
+| 8 | `app` | Full sync may complete immediately and behave similarly to delta sync for some remote providers/sessions | Retry full sync from source/profile action; use delta sync for routine updates until fix is finalized |
 
 ---
 
@@ -32,9 +33,9 @@ For individual bug reports, please open a GitHub issue on the repository and ref
 ### Offline & Downloads
 - [ ] WorkManager-based background download queue
 - [x] Configurable download source URL in Settings (with basic URL reachability test)
-- [ ] Configurable download quality per source
-- [ ] Automatic sync / delta updates from remote sources
-- [ ] Offline mode toggle (disable all network calls)
+- [x] Configurable download quality per source
+- [x] Automatic sync / delta updates from remote sources
+- [x] Offline mode toggle (disable all network calls)
 
 ### Library Management
 - [ ] Full Plex Music API integration (token via OAuth PIN flow)

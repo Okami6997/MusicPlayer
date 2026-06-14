@@ -9,6 +9,7 @@ import com.musicplayer.data.repository.ProfileRepository
 import com.musicplayer.profile.MediaServiceType
 import com.musicplayer.profile.Profile
 import com.musicplayer.profile.toMediaSource
+import com.musicplayer.worker.DeltaProfileSyncWorker
 import com.musicplayer.worker.ProfileSyncWorker
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
@@ -107,7 +108,70 @@ class ProfileListViewModel @Inject constructor(
     }
 
     fun syncProfile(profile: Profile) {
-        if (_uiState.value.syncingProfileId != null) return // already syncing one
+        // Default behaviour is now a delta sync (fast, fetches only changes).
+        deltaSyncProfile(profile)
+    }
+
+    /**
+     * Enqueues a [DeltaProfileSyncWorker] for the given [profile] so only the
+     * changes since the last sync are downloaded. Falls back to a full sync
+     * internally if the profile has never been fully synced.
+     */
+    fun deltaSyncProfile(profile: Profile) {
+        if (_uiState.value.syncingProfileId != null) return
+
+        val inputData = workDataOf(
+            DeltaProfileSyncWorker.KEY_PROFILE_ID to profile.id,
+            DeltaProfileSyncWorker.KEY_PROFILE_NAME to profile.name
+        )
+
+        val syncWork = OneTimeWorkRequestBuilder<DeltaProfileSyncWorker>()
+            .setInputData(inputData)
+            .addTag("delta_sync_profile_${profile.id}")
+            .build()
+
+        workManager.enqueueUniqueWork(
+            "delta_sync_profile_${profile.id}",
+            ExistingWorkPolicy.REPLACE,
+            syncWork
+        )
+
+        _uiState.update { it.copy(syncingProfileId = profile.id, syncMessage = null) }
+
+        viewModelScope.launch {
+            workManager.getWorkInfoByIdFlow(syncWork.id).collect { workInfo ->
+                when (workInfo?.state) {
+                    WorkInfo.State.SUCCEEDED -> {
+                        val added = workInfo.outputData.getInt(DeltaProfileSyncWorker.KEY_ADDED, 0)
+                        val updated = workInfo.outputData.getInt(DeltaProfileSyncWorker.KEY_UPDATED, 0)
+                        val removed = workInfo.outputData.getInt(DeltaProfileSyncWorker.KEY_REMOVED, 0)
+                        val total = workInfo.outputData.getInt(DeltaProfileSyncWorker.KEY_TOTAL_AFTER, 0)
+                        val msg = if (added == 0 && updated == 0 && removed == 0) {
+                            "Up to date ($total tracks) for \"${profile.name}\""
+                        } else {
+                            "Synced \"${profile.name}\" +$added ~$updated -$removed ($total total)"
+                        }
+                        _uiState.update { it.copy(syncingProfileId = null, syncMessage = msg) }
+                    }
+                    WorkInfo.State.FAILED -> {
+                        val errorMessage = workInfo.outputData.getString(DeltaProfileSyncWorker.KEY_ERROR_MESSAGE) ?: "Unknown error"
+                        _uiState.update { it.copy(syncingProfileId = null, syncMessage = "Sync failed: $errorMessage") }
+                    }
+                    WorkInfo.State.RUNNING -> {
+                        _uiState.update { it.copy(syncingProfileId = profile.id, syncMessage = "Syncing ${profile.name}...") }
+                    }
+                    else -> {}
+                }
+            }
+        }
+    }
+
+    /**
+     * Enqueues a [ProfileSyncWorker] for the given [profile], performing a
+     * full re-sync that rebuilds the local cache from scratch.
+     */
+    fun fullSyncProfile(profile: Profile) {
+        if (_uiState.value.syncingProfileId != null) return
 
         val inputData = workDataOf(
             ProfileSyncWorker.KEY_PROFILE_ID to profile.id,
@@ -116,11 +180,11 @@ class ProfileListViewModel @Inject constructor(
 
         val syncWork = OneTimeWorkRequestBuilder<ProfileSyncWorker>()
             .setInputData(inputData)
-            .addTag("sync_profile_${profile.id}")
+            .addTag("full_sync_profile_${profile.id}")
             .build()
 
         workManager.enqueueUniqueWork(
-            "sync_profile_${profile.id}",
+            "full_sync_profile_${profile.id}",
             ExistingWorkPolicy.REPLACE,
             syncWork
         )
@@ -132,14 +196,14 @@ class ProfileListViewModel @Inject constructor(
                 when (workInfo?.state) {
                     WorkInfo.State.SUCCEEDED -> {
                         val trackCount = workInfo.outputData.getInt(ProfileSyncWorker.KEY_TRACK_COUNT, 0)
-                        _uiState.update { it.copy(syncingProfileId = null, syncMessage = "Synced $trackCount tracks from \"${profile.name}\"") }
+                        _uiState.update { it.copy(syncingProfileId = null, syncMessage = "Full sync done: $trackCount tracks from \"${profile.name}\"") }
                     }
                     WorkInfo.State.FAILED -> {
                         val errorMessage = workInfo.outputData.getString(ProfileSyncWorker.KEY_ERROR_MESSAGE) ?: "Unknown error"
                         _uiState.update { it.copy(syncingProfileId = null, syncMessage = "Sync failed: $errorMessage") }
                     }
                     WorkInfo.State.RUNNING -> {
-                        _uiState.update { it.copy(syncingProfileId = profile.id, syncMessage = "Syncing ${profile.name}...") }
+                        _uiState.update { it.copy(syncingProfileId = profile.id, syncMessage = "Full sync of ${profile.name}...") }
                     }
                     else -> {}
                 }

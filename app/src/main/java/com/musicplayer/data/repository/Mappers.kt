@@ -33,7 +33,8 @@ fun Track.toEntity(): TrackEntity = TrackEntity(
     sampleRate = sampleRate,
     fileSize = fileSize,
     codec = codec,
-    extension = extension
+    extension = extension,
+    remoteUpdatedAt = remoteUpdatedAt
 )
 
 fun TrackEntity.toDomain(): Track = Track(
@@ -59,7 +60,8 @@ fun TrackEntity.toDomain(): Track = Track(
     sampleRate = sampleRate,
     fileSize = fileSize,
     codec = codec,
-    extension = extension
+    extension = extension,
+    remoteUpdatedAt = remoteUpdatedAt
 )
 
 // ── MediaSource ───────────────────────────────────────────────────────────────
@@ -75,6 +77,8 @@ fun MediaSource.toEntity(): MediaSourceEntity = MediaSourceEntity(
     localPath = localPath,
     isEnabled = isEnabled,
     lastSyncTime = lastSyncTime,
+    lastDeltaSyncAt = lastDeltaSyncAt,
+    lastFullSyncAt = lastFullSyncAt,
     artworkUri = artworkUri
 )
 
@@ -89,6 +93,8 @@ fun MediaSourceEntity.toDomain(): MediaSource = MediaSource(
     localPath = localPath,
     isEnabled = isEnabled,
     lastSyncTime = lastSyncTime,
+    lastDeltaSyncAt = lastDeltaSyncAt,
+    lastFullSyncAt = lastFullSyncAt,
     artworkUri = artworkUri
 )
 

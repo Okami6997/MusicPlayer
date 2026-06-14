@@ -106,7 +106,63 @@ class PlexClient @Inject constructor() {
             sourceType = source.type,
             bitrate = mediaInfo?.bitrate ?: 0,
             fileSize = mediaInfo?.parts?.firstOrNull()?.size ?: 0L,
-            codec = mediaInfo?.container ?: ""
+            codec = mediaInfo?.container ?: "",
+            // Plex's `updatedAt` is epoch seconds, convert to millis.
+            remoteUpdatedAt = if (updatedAt > 0L) updatedAt * 1000L else 0L
         )
+    }
+
+    /**
+     * Fetches only the items that were updated after [sinceEpochMillis].
+     * Walks Plex's paginated section endpoint and stops paging as soon as the
+     * server returns items older than the cutoff (the API returns items in
+     * newest-first order when `sort` is provided — Plex does not, so we just
+     * fetch a single recent page and filter in memory).
+     */
+    suspend fun fetchChangedTracks(
+        api: PlexApi,
+        source: MediaSource,
+        sinceEpochMillis: Long
+    ): List<Track> {
+        val tracks = mutableListOf<Track>()
+
+        val sections = api.getLibrarySections(token = source.token)
+        val musicSections = sections.mediaContainer.directories.filter { it.type == "artist" }
+        if (musicSections.isEmpty()) return emptyList()
+
+        for (section in musicSections) {
+            var start = 0
+            val pageSize = 500
+            // Walk the most recent N items only — Plex doesn't expose a date filter,
+            // so we cap the work at a reasonable page count to keep delta sync cheap.
+            val maxPages = 4
+
+            var page = 0
+            while (page < maxPages) {
+                val response = api.getSectionItems(
+                    token = source.token,
+                    sectionKey = section.key,
+                    start = start,
+                    size = pageSize
+                )
+                val items = response.mediaContainer.metadata
+                if (items.isEmpty()) break
+
+                for (item in items) {
+                    val itemMillis = if (item.updatedAt > 0L) item.updatedAt * 1000L else 0L
+                    if (sinceEpochMillis > 0L && itemMillis in 1..sinceEpochMillis) {
+                        // Stop paging this section — we hit the cutoff.
+                        return tracks
+                    }
+                    tracks.add(item.toTrack(source))
+                }
+                if (items.size < pageSize) break
+                start += pageSize
+                page++
+            }
+        }
+
+        Timber.d("Delta Plex: fetched ${tracks.size} changed tracks")
+        return tracks
     }
 }

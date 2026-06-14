@@ -31,7 +31,10 @@ data class PlexMetadata(
     @SerializedName("thumb") val thumb: String = "",
     @SerializedName("parentThumb") val parentThumb: String = "",
     @SerializedName("grandparentThumb") val grandparentThumb: String = "",
-    @SerializedName("Media") val media: List<PlexMedia> = emptyList()
+    @SerializedName("Media") val media: List<PlexMedia> = emptyList(),
+    // Epoch seconds of the last update to this item on the server.
+    // Used by the delta sync algorithm to skip items that haven't changed since the last sync.
+    @SerializedName("updatedAt") val updatedAt: Long = 0L
 )
 
 data class PlexMedia(

@@ -27,6 +27,7 @@ object AppModule {
     @Singleton
     fun provideDatabase(@ApplicationContext context: Context): MusicDatabase =
         Room.databaseBuilder(context, MusicDatabase::class.java, MusicDatabase.DATABASE_NAME)
+            .addMigrations(MusicDatabase.MIGRATION_7_8)
             .fallbackToDestructiveMigration()
             .build()
 

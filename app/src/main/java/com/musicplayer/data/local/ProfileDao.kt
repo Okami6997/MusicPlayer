@@ -81,4 +81,29 @@ interface ProfileDao {
 
     @Query("SELECT COUNT(*) FROM profile_tracks WHERE profileId = :profileId")
     suspend fun getTrackCountForProfile(profileId: String): Int
+
+    // ── Delta sync helpers ─────────────────────────────────────────────────────
+
+    /** Returns all track remote IDs (without the profile prefix) for a profile. */
+    @Query("SELECT remoteId FROM profile_tracks WHERE profileId = :profileId")
+    suspend fun getRemoteIdsByProfile(profileId: String): List<String>
+
+    /** Returns (remoteId, remoteUpdatedAt) for every track in a profile. */
+    @Query("SELECT remoteId, remoteUpdatedAt FROM profile_tracks WHERE profileId = :profileId")
+    suspend fun getTrackTimestampsByProfile(profileId: String): List<ProfileTrackTimestampRow>
+
+    @Query("DELETE FROM profile_tracks WHERE profileId = :profileId AND remoteId IN (:remoteIds)")
+    suspend fun deleteTracksByRemoteIds(profileId: String, remoteIds: List<String>)
+
+    @Query("UPDATE profiles SET lastDeltaSyncAt = :timestamp WHERE id = :id")
+    suspend fun updateLastDeltaSyncTime(id: String, timestamp: Long)
+
+    @Query("UPDATE profiles SET lastFullSyncAt = :timestamp WHERE id = :id")
+    suspend fun updateLastFullSyncTime(id: String, timestamp: Long)
 }
+
+/** Row used by ProfileDao.getTrackTimestampsByProfile. */
+data class ProfileTrackTimestampRow(
+    val remoteId: String,
+    val remoteUpdatedAt: Long
+)

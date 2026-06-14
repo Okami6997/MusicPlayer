@@ -199,9 +199,11 @@ class MusicRepository @Inject constructor(
                 scanLocalLibrary()
             }
             MediaSourceType.SUBSONIC,
-            MediaSourceType.OPEN_SUBSONIC,
-            MediaSourceType.NAVIDROME -> {
+            MediaSourceType.OPEN_SUBSONIC -> {
                 syncSubsonicSource(source)
+            }
+            MediaSourceType.NAVIDROME -> {
+                syncNavidromeSource(source)
             }
             MediaSourceType.JELLYFIN,
             MediaSourceType.EMBY -> {
@@ -313,8 +315,11 @@ class MusicRepository @Inject constructor(
     suspend fun fetchTracksFromSource(source: MediaSource): List<Track> {
         return when (source.type) {
             MediaSourceType.SUBSONIC,
-            MediaSourceType.OPEN_SUBSONIC,
-            MediaSourceType.NAVIDROME -> fetchSubsonicTracks(source)
+            MediaSourceType.OPEN_SUBSONIC -> fetchSubsonicTracks(source)
+            MediaSourceType.NAVIDROME -> {
+                val api = createApi<NavidromeApi>(source)
+                navidromeClient.fetchAllTracks(api, source)
+            }
             MediaSourceType.JELLYFIN,
             MediaSourceType.EMBY -> fetchJellyfinTracks(source)
             MediaSourceType.PLEX -> fetchPlexTracks(source)
@@ -323,6 +328,252 @@ class MusicRepository @Inject constructor(
                 emptyList()
             }
         }
+    }
+
+    /**
+     * Fetches only the tracks that have changed since [sinceEpochMillis] for
+     * the given [source]. Mirrors [fetchTracksFromSource] but uses each
+     * client's delta-sync endpoint. Does NOT write to the DB — the caller
+     * (typically [ProfileMusicRepository.deltaSyncProfile]) is responsible
+     * for diffing and persisting.
+     */
+    suspend fun fetchChangedTracksFromSource(source: MediaSource, sinceEpochMillis: Long): List<Track> {
+        return try {
+            fetchChangedTracksForSource(source, sinceEpochMillis)
+        } catch (e: Exception) {
+            Timber.e(e, "fetchChangedTracksFromSource failed for ${source.name}")
+            emptyList()
+        }
+    }
+
+    /**
+     * Fetches the full remote track ID set for a source. Used by profile delta
+     * sync to detect deletions when the backend returns only changed items.
+     */
+    suspend fun fetchAllTrackIdsFromSource(source: MediaSource): Set<String> {
+        return try {
+            when (source.type) {
+                MediaSourceType.JELLYFIN,
+                MediaSourceType.EMBY -> {
+                    val api = createApi<JellyfinApi>(source)
+                    jellyfinClient.fetchAllTrackIds(api, source)
+                }
+                MediaSourceType.NAVIDROME -> {
+                    val api = createApi<NavidromeApi>(source)
+                    navidromeClient.fetchAllTrackIds(api, source)
+                }
+                else -> emptySet()
+            }
+        } catch (e: Exception) {
+            Timber.e(e, "fetchAllTrackIdsFromSource failed for ${source.name}")
+            emptySet()
+        }
+    }
+
+    // ── Delta sync ─────────────────────────────────────────────────────────────
+
+    /**
+     * Summary of a delta sync run — what was added, updated, and removed.
+     */
+    data class DeltaSyncResult(
+        val added: Int,
+        val updated: Int,
+        val removed: Int,
+        val totalAfter: Int
+    )
+
+    /**
+     * Performs a delta sync for the given [source]: fetches only the tracks
+     * that have changed since [MediaSource.lastDeltaSyncAt], diffs them against
+     * the local cache, and applies the changes (insert / update / delete).
+     *
+     * Falls back to a full sync if:
+     * - A full sync has never been completed for this source.
+     * - The source type doesn't support incremental fetching.
+     * - The remote client can't return changed items.
+     *
+     * Updates [MediaSource.lastDeltaSyncAt] on success.
+     */
+    suspend fun deltaSyncSource(source: MediaSource): DeltaSyncResult {
+        // If we have never done a full sync, we have nothing to diff against — fall back.
+        if (source.lastFullSyncAt <= 0L) {
+            Timber.d("Delta sync: no full sync on record for ${source.name}, falling back to full sync")
+            val tracks = syncSource(source)
+            mediaSourceDao.updateLastDeltaSyncTime(source.id, System.currentTimeMillis())
+            mediaSourceDao.updateLastFullSyncTime(source.id, System.currentTimeMillis())
+            return DeltaSyncResult(added = tracks.size, updated = 0, removed = 0, totalAfter = tracks.size)
+        }
+
+        val sinceEpochMillis = source.lastDeltaSyncAt
+        val changed = try {
+            fetchChangedTracksForSource(source, sinceEpochMillis)
+        } catch (e: Exception) {
+            Timber.e(e, "Delta sync failed for ${source.name}, falling back to full sync")
+            val tracks = syncSource(source)
+            mediaSourceDao.updateLastDeltaSyncTime(source.id, System.currentTimeMillis())
+            mediaSourceDao.updateLastFullSyncTime(source.id, System.currentTimeMillis())
+            return DeltaSyncResult(added = tracks.size, updated = 0, removed = 0, totalAfter = tracks.size)
+        }
+
+        // Subsonic clients may return an empty list when the cheap lastModified
+        // check reports no changes. Don't touch the DB in that case.
+        if (changed.isEmpty() && source.type in listOf(
+                MediaSourceType.SUBSONIC,
+                MediaSourceType.OPEN_SUBSONIC
+            )
+        ) {
+            Timber.d("Delta sync (Subsonic/Navidrome): no changes reported for ${source.name}")
+            mediaSourceDao.updateLastDeltaSyncTime(source.id, System.currentTimeMillis())
+            return DeltaSyncResult(added = 0, updated = 0, removed = 0, totalAfter = trackDao.getTrackIdsBySource(source.id).size)
+        }
+
+        val result = applyDeltaChanges(source, changed)
+        mediaSourceDao.updateLastDeltaSyncTime(source.id, System.currentTimeMillis())
+        Timber.d("Delta sync for ${source.name}: +${result.added} ~${result.updated} -${result.removed}")
+        return result
+    }
+
+    /**
+     * Fetches the changed tracks (added or modified since the cutoff) from the
+     * appropriate remote client for the given source.
+     */
+    private suspend fun fetchChangedTracksForSource(source: MediaSource, sinceEpochMillis: Long): List<Track> {
+        return when (source.type) {
+            MediaSourceType.SUBSONIC,
+            MediaSourceType.OPEN_SUBSONIC -> {
+                val api = createApi<SubsonicApi>(source)
+                // Subsonic: use the cheap getIndexes.lastModified check. If unchanged,
+                // return an empty list so the caller can short-circuit. If the
+                // server doesn't support it, fall back to a full fetch.
+                val lastModified = subsonicClient.fetchLibraryLastModified(api, source)
+                if (lastModified != null && sinceEpochMillis > 0L && lastModified <= sinceEpochMillis) {
+                    emptyList()
+                } else {
+                    // Library changed (or we don't have a baseline) — fetch everything.
+                    subsonicClient.fetchAllTracks(api, source)
+                }
+            }
+            MediaSourceType.NAVIDROME -> {
+                val navidromeApi = createApi<NavidromeApi>(source)
+                navidromeClient.fetchChangedTracks(navidromeApi, source, sinceEpochMillis)
+            }
+            MediaSourceType.JELLYFIN,
+            MediaSourceType.EMBY -> {
+                val api = createApi<JellyfinApi>(source)
+                jellyfinClient.fetchChangedTracks(api, source, sinceEpochMillis)
+            }
+            MediaSourceType.PLEX -> {
+                val api = createApi<PlexApi>(source)
+                plexClient.fetchChangedTracks(api, source, sinceEpochMillis)
+            }
+            else -> {
+                Timber.w("Delta sync not supported for source type: ${source.type}")
+                emptyList()
+            }
+        }
+    }
+
+    /**
+     * Applies a set of [changed] tracks to the local cache: upserts each one
+     * and removes any local tracks belonging to [source] whose IDs are not in
+     * the changed set and that are older than the cutoff.
+     *
+     * For sources that don't return a complete list of every server track
+     * (e.g. Subsonic's "full fetch" path), we do a simpler strategy: upsert
+     * the changed rows and leave the existing local rows alone for removal
+     * detection. Removal detection is only performed when the server returns
+     * a complete inventory (the Subsonic "library changed" path).
+     */
+    private suspend fun applyDeltaChanges(source: MediaSource, changed: List<Track>): DeltaSyncResult {
+        val changedIds = changed.map { it.id }.toSet()
+        var added = 0
+        var updated = 0
+
+        if (changed.isNotEmpty()) {
+            val existing = trackDao.getTrackTimestampsBySource(source.id)
+                .associate { it.id to it.remoteUpdatedAt }
+            val toUpsert = changed.map { track ->
+                val existingEntity = trackDao.getTrackById(track.id)
+                val mergedTrack = mergeTrackMetadata(track, existingEntity)
+                val entity = mergedTrack.toEntity()
+                if (existing.containsKey(track.id)) updated++ else added++
+                entity
+            }
+            trackDao.upsertTracks(toUpsert)
+        }
+
+        // Removal detection:
+        // - Subsonic/OpenSubsonic: changed list is a full inventory when library changed.
+        // - Jellyfin/Emby: run an ID reconciliation pass to detect deletions.
+        val removed = when (source.type) {
+            MediaSourceType.SUBSONIC,
+            MediaSourceType.OPEN_SUBSONIC -> {
+                val localIds = trackDao.getTrackIdsBySource(source.id).toSet()
+                val toRemove = localIds - changedIds
+                if (toRemove.isNotEmpty()) {
+                    trackDao.deleteTracksByIds(source.id, toRemove.toList())
+                }
+                toRemove.size
+            }
+            MediaSourceType.JELLYFIN,
+            MediaSourceType.EMBY -> {
+                val api = createApi<JellyfinApi>(source)
+                val remoteIds = jellyfinClient.fetchAllTrackIds(api, source)
+                val localIds = trackDao.getTrackIdsBySource(source.id).toSet()
+                val toRemove = localIds - remoteIds
+                if (toRemove.isNotEmpty()) {
+                    trackDao.deleteTracksByIds(source.id, toRemove.toList())
+                }
+                toRemove.size
+            }
+            MediaSourceType.NAVIDROME -> {
+                val api = createApi<NavidromeApi>(source)
+                val remoteIds = navidromeClient.fetchAllTrackIds(api, source)
+                val localIds = trackDao.getTrackIdsBySource(source.id).toSet()
+                val toRemove = localIds - remoteIds
+                if (toRemove.isNotEmpty()) {
+                    trackDao.deleteTracksByIds(source.id, toRemove.toList())
+                }
+                toRemove.size
+            }
+            else -> 0
+        }
+
+        val totalAfter = trackDao.getTrackIdsBySource(source.id).size
+        return DeltaSyncResult(added = added, updated = updated, removed = removed, totalAfter = totalAfter)
+    }
+
+    /**
+     * Delta payloads can be partial on some providers; preserve local metadata
+     * (especially artwork/album fields) when incoming values are empty.
+     */
+    private fun mergeTrackMetadata(
+        incoming: Track,
+        existing: com.musicplayer.data.local.TrackEntity?
+    ): Track {
+        if (existing == null) return incoming
+
+        return incoming.copy(
+            title = incoming.title.ifBlank { existing.title },
+            artist = incoming.artist.ifBlank { existing.artist },
+            albumArtist = incoming.albumArtist.ifBlank { existing.albumArtist },
+            album = incoming.album.ifBlank { existing.album },
+            albumId = incoming.albumId.ifBlank { existing.albumId },
+            genre = incoming.genre.ifBlank { existing.genre },
+            uri = incoming.uri.ifBlank { existing.uri },
+            artworkUri = incoming.artworkUri ?: existing.artworkUri,
+            trackNumber = if (incoming.trackNumber != 0) incoming.trackNumber else existing.trackNumber,
+            discNumber = if (incoming.discNumber != 0) incoming.discNumber else existing.discNumber,
+            year = if (incoming.year != 0) incoming.year else existing.year,
+            duration = if (incoming.duration != 0L) incoming.duration else existing.duration,
+            bitrate = if (incoming.bitrate != 0) incoming.bitrate else existing.bitrate,
+            sampleRate = if (incoming.sampleRate != 0) incoming.sampleRate else existing.sampleRate,
+            fileSize = if (incoming.fileSize != 0L) incoming.fileSize else existing.fileSize,
+            codec = incoming.codec.ifBlank { existing.codec },
+            extension = incoming.extension.ifBlank { existing.extension },
+            // Keep the best-known timestamp if server omitted it in delta payload.
+            remoteUpdatedAt = if (incoming.remoteUpdatedAt != 0L) incoming.remoteUpdatedAt else existing.remoteUpdatedAt
+        )
     }
 
     // ── Connection testing ────────────────────────────────────────────────────

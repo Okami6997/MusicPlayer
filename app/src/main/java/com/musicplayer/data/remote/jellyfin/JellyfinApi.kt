@@ -29,7 +29,8 @@ interface JellyfinApi {
         @Query("StartIndex") startIndex: Int = 0,
         @Query("Limit") limit: Int = 500,
         @Query("SortBy") sortBy: String = "Album,SortName",
-        @Query("SortOrder") sortOrder: String = "Ascending"
+        @Query("SortOrder") sortOrder: String = "Ascending",
+        @Query("MinDateLastSaved") minDateLastSaved: String? = null
     ): JellyfinItemsResponse
 
     @GET("Items/{itemId}")

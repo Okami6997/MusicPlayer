@@ -19,6 +19,10 @@ Cross-platform Android music player for phone, Wear OS, TV, and Auto.
 - Strengthened data isolation by separating New UI profile-based data through `ProfileMusicRepository` and `ProfileTrackEntity`, while old UI library data remains on `TrackEntity` via `OldUiLibraryViewModel`.
 - Fixed download URL construction in `DownloadClient.kt` to avoid 404 responses.
 
+## Known issues / bugs
+- Full sync may complete almost instantly for some remote sources and behave similarly to delta sync in runtime behavior.
+- See ISSUES.md for the tracked status and workarounds.
+
 ## Build
 ```bash
 ./gradlew :app:assembleDebug

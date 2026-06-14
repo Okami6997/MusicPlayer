@@ -15,7 +15,9 @@ data class SettingsUiState(
     val themeMode: String = "system",
     val gaplessPlayback: Boolean = true,
     val crossfadeDurationMs: Int = 0,
-    val useNewUi: Boolean = false
+    val useNewUi: Boolean = false,
+    val lastDeltaSyncAt: Long = 0L,
+    val lastFullSyncAt: Long = 0L
 )
 
 @HiltViewModel
@@ -37,7 +39,9 @@ class SettingsViewModel @Inject constructor(
                 themeMode = prefs[SettingsKeys.THEME_MODE] ?: "system",
                 gaplessPlayback = prefs[SettingsKeys.GAPLESS_PLAYBACK] ?: true,
                 crossfadeDurationMs = prefs[SettingsKeys.CROSSFADE_DURATION] ?: 0,
-                useNewUi = prefs[SettingsKeys.USE_NEW_UI] ?: false
+                useNewUi = prefs[SettingsKeys.USE_NEW_UI] ?: false,
+                lastDeltaSyncAt = prefs[SettingsKeys.LAST_DELTA_SYNC_TIME] ?: 0L,
+                lastFullSyncAt = prefs[SettingsKeys.LAST_FULL_SYNC_TIME] ?: 0L
             )
         }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), SettingsUiState())
@@ -63,6 +67,18 @@ class SettingsViewModel @Inject constructor(
     fun setUseNewUi(enabled: Boolean) {
         viewModelScope.launch {
             dataStore.edit { it[SettingsKeys.USE_NEW_UI] = enabled }
+
+    fun setLastDeltaSyncTime(timestamp: Long) {
+        viewModelScope.launch {
+            dataStore.edit { it[SettingsKeys.LAST_DELTA_SYNC_TIME] = timestamp }
+        }
+    }
+
+    fun setLastFullSyncTime(timestamp: Long) {
+        viewModelScope.launch {
+            dataStore.edit { it[SettingsKeys.LAST_FULL_SYNC_TIME] = timestamp }
+        }
+    }
         }
     }
 }

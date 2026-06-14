@@ -109,7 +109,9 @@ class ProfileRepository @Inject constructor(
             username = username,
             password = password,
             token = token,
-            downloadPort = downloadPort
+            downloadPort = downloadPort,
+            lastDeltaSyncAt = lastDeltaSyncAt,
+            lastFullSyncAt = lastFullSyncAt
         )
     }
 
@@ -125,7 +127,9 @@ class ProfileRepository @Inject constructor(
             username = username,
             password = password,
             token = token,
-            downloadPort = downloadPort
+            downloadPort = downloadPort,
+            lastDeltaSyncAt = lastDeltaSyncAt,
+            lastFullSyncAt = lastFullSyncAt
         )
     }
 }

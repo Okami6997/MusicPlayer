@@ -207,6 +207,29 @@ class SubsonicClient @Inject constructor() {
         )
     }
 
+    /**
+     * Cheap "has anything changed since the last sync?" check for Subsonic-compatible
+     * servers. Returns the server's `lastModified` epoch millis for the music index
+     * if it could be retrieved, or `null` if the server doesn't support the endpoint.
+     *
+     * The caller compares this against the stored `lastDeltaSyncAt` to decide
+     * whether a full re-sync is needed.
+     */
+    suspend fun fetchLibraryLastModified(
+        api: SubsonicApi,
+        source: MediaSource
+    ): Long? {
+        return try {
+            val (token, salt) = generateToken(source.password)
+            val resp = api.getIndexes(source.username, token, salt)
+            val millis = resp.response.indexes?.lastModified
+            if (millis != null && millis > 0L) millis else null
+        } catch (e: Exception) {
+            Timber.w(e, "Delta Subsonic: getIndexes.lastModified not available for ${source.name}")
+            null
+        }
+    }
+
     private suspend fun fetchAndAddSongsFromAlbum(api: SubsonicApi, source: MediaSource, albumId: String, token: String, salt: String, map: MutableMap<String, Track>) {
         try {
             val resp = api.getAlbum(albumId, source.username, token, salt)

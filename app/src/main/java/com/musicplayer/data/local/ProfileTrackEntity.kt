@@ -37,5 +37,8 @@ data class ProfileTrackEntity(
     val codec: String = "",
     val streamUri: String = "",
     val sourceType: String = "USER", // The actual source type (SUBSONIC, NAVIDROME, JELLYFIN, etc.)
-    val createdAt: Long = System.currentTimeMillis()
+    val createdAt: Long = System.currentTimeMillis(),
+    // Timestamp (epoch millis) reported by the remote server for when this track was last modified.
+    // 0 means "unknown / never synced via delta".
+    val remoteUpdatedAt: Long = 0L
 )

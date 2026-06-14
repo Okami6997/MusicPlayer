@@ -56,6 +56,13 @@ class ProfileSyncWorker(
             val tracks = musicRepository.fetchTracksFromSource(source)
             profileMusicRepository.clearTracksForProfile(profileId)
             profileMusicRepository.saveTracks(profileId, source.type, tracks)
+            val now = System.currentTimeMillis()
+            profileRepository.updateProfile(
+                profile.copy(
+                    lastFullSyncAt = now,
+                    lastDeltaSyncAt = if (profile.lastDeltaSyncAt > 0L) profile.lastDeltaSyncAt else now
+                )
+            )
 
             Result.success(
                 androidx.work.Data.Builder()

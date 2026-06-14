@@ -13,6 +13,7 @@ import com.musicplayer.ui.newui.ProfileListScreen
 import com.musicplayer.ui.newui.ProfileEditScreen
 import com.musicplayer.ui.download.DownloadMusicScreen
 import com.musicplayer.ui.library.LibraryScreen
+import com.musicplayer.ui.library.LibraryViewModel
 import com.musicplayer.ui.library.AlbumDetailScreen
 import com.musicplayer.ui.library.ArtistDetailScreen
 import com.musicplayer.ui.library.PlaylistDetailScreen
@@ -43,6 +44,7 @@ sealed class NewUiScreen(val route: String) {
     data object Audio : NewUiScreen("new_ui_audio")
     data object Downloads : NewUiScreen("new_ui_downloads")
     data object AndroidAuto : NewUiScreen("new_ui_android_auto")
+    data object Sync : NewUiScreen("new_ui_sync")
     data object AlbumDetail : NewUiScreen("new_ui_album_detail/{albumId}") {
         fun createRoute(albumId: String) = "new_ui_album_detail/$albumId"
     }
@@ -125,6 +127,7 @@ fun NewUiNavGraph(
         // Library
         composable(NewUiScreen.Library.route) {
             val playerViewModel: PlayerViewModel = hiltViewModel()
+            val libraryViewModel: LibraryViewModel = hiltViewModel()
             LibraryScreen(
                 onNavigateToPlayer = { navController.navigate(NewUiScreen.Player.route) },
                 onNavigateToAlbum = { albumId ->
@@ -137,7 +140,8 @@ fun NewUiNavGraph(
                     navController.navigate(NewUiScreen.PlaylistDetail.createRoute(playlistId))
                 },
                 onNavigateBack = { navController.popBackStack() },
-                playerViewModel = playerViewModel
+                playerViewModel = playerViewModel,
+                libraryViewModel = libraryViewModel
             )
         }
 
@@ -190,6 +194,14 @@ fun NewUiNavGraph(
                 onNavigateToAppearance = { navController.navigate(NewUiScreen.Appearance.route) },
                 onNavigateToAudio = { navController.navigate(NewUiScreen.Audio.route) },
                 onNavigateToDownloads = { navController.navigate(NewUiScreen.Downloads.route) },
+                onNavigateToSync = { navController.navigate(NewUiScreen.Sync.route) },
+                onNavigateBack = { navController.popBackStack() }
+            )
+        }
+
+        // Sync
+        composable(NewUiScreen.Sync.route) {
+            com.musicplayer.ui.settings.SyncScreen(
                 onNavigateBack = { navController.popBackStack() }
             )
         }

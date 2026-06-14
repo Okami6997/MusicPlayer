@@ -15,5 +15,9 @@ data class MediaSourceEntity(
     val localPath: String,
     val isEnabled: Boolean,
     val lastSyncTime: Long,
-    val artworkUri: String?
+    val artworkUri: String?,
+    // Epoch millis of the last successful delta sync for this source. 0 means never.
+    val lastDeltaSyncAt: Long = 0L,
+    // Epoch millis of the last successful full sync for this source. 0 means never.
+    val lastFullSyncAt: Long = 0L
 )

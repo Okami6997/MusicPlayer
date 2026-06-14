@@ -177,31 +177,139 @@ class ProfileMusicRepository @Inject constructor(
     suspend fun saveTracks(profileId: String, sourceType: MediaSourceType, tracks: List<Track>) {
         val sourceTypeStr = sourceType.name
         val entities = tracks.map { track ->
+            val existing = profileDao.getTrackByRemoteId(profileId, track.id)
             ProfileTrackEntity(
                 id = "${profileId}_${track.id}",
                 profileId = profileId,
                 remoteId = track.id,
-                title = track.title,
-                artist = track.artist,
-                album = track.album,
-                albumArtist = track.albumArtist,
-                albumId = track.albumId,
-                duration = track.duration,
-                trackNumber = track.trackNumber,
-                discNumber = track.discNumber,
-                year = track.year,
-                genre = track.genre,
-                artworkUri = track.artworkUri,
-                bitrate = track.bitrate,
-                sampleRate = track.sampleRate,
-                fileSize = track.fileSize,
-                codec = track.codec,
-                streamUri = track.uri,
-                sourceType = sourceTypeStr
+                title = track.title.ifBlank { existing?.title ?: "" },
+                artist = track.artist.ifBlank { existing?.artist ?: "" },
+                album = track.album.ifBlank { existing?.album ?: "" },
+                albumArtist = track.albumArtist.ifBlank { existing?.albumArtist ?: "" },
+                albumId = track.albumId.ifBlank { existing?.albumId ?: "" },
+                duration = if (track.duration != 0L) track.duration else (existing?.duration ?: 0L),
+                trackNumber = if (track.trackNumber != 0) track.trackNumber else (existing?.trackNumber ?: 0),
+                discNumber = if (track.discNumber != 0) track.discNumber else (existing?.discNumber ?: 1),
+                year = if (track.year != 0) track.year else (existing?.year ?: 0),
+                genre = track.genre.ifBlank { existing?.genre ?: "" },
+                artworkUri = track.artworkUri ?: existing?.artworkUri,
+                bitrate = if (track.bitrate != 0) track.bitrate else (existing?.bitrate ?: 0),
+                sampleRate = if (track.sampleRate != 0) track.sampleRate else (existing?.sampleRate ?: 0),
+                fileSize = if (track.fileSize != 0L) track.fileSize else (existing?.fileSize ?: 0L),
+                codec = track.codec.ifBlank { existing?.codec ?: "" },
+                streamUri = track.uri.ifBlank { existing?.streamUri ?: "" },
+                sourceType = sourceTypeStr,
+                remoteUpdatedAt = if (track.remoteUpdatedAt != 0L) track.remoteUpdatedAt else (existing?.remoteUpdatedAt ?: 0L)
             )
         }
         profileDao.insertTracks(entities)
         Timber.d("Saved ${entities.size} tracks for profile $profileId")
+    }
+
+    // ── Delta sync ─────────────────────────────────────────────────────────────
+
+    /**
+     * Summary of a profile delta sync run.
+     */
+    data class DeltaSyncResult(
+        val added: Int,
+        val updated: Int,
+        val removed: Int,
+        val totalAfter: Int
+    )
+
+    /**
+     * Performs a delta sync for the given [profile]: fetches only the tracks
+     * that have changed since [Profile.lastDeltaSyncAt], diffs them against
+     * the local cache, and applies the changes (insert / update / delete).
+     *
+     * Falls back to a full sync if:
+     * - A full sync has never been completed for this profile.
+     * - The remote client can't return changed items.
+     *
+     * Updates [Profile.lastDeltaSyncAt] (and `lastFullSyncAt` when a fallback
+     * occurs) via the [profileRepository].
+     */
+    suspend fun deltaSyncProfile(
+        profile: com.musicplayer.profile.Profile,
+        changedTracks: List<Track>,
+        remoteIdsSnapshot: Set<String>? = null
+    ): DeltaSyncResult {
+        val profileId = profile.id
+        val now = System.currentTimeMillis()
+
+        // If we have never done a full sync, we have nothing to diff against — fall back.
+        if (profile.lastFullSyncAt <= 0L) {
+            Timber.d("Delta sync: no full sync on record for profile ${profile.name}, falling back to full sync")
+            // The caller is expected to perform a full sync separately when this happens.
+            profileDao.updateLastDeltaSyncTime(profileId, now)
+            profileDao.updateLastFullSyncTime(profileId, now)
+            return DeltaSyncResult(added = changedTracks.size, updated = 0, removed = 0, totalAfter = changedTracks.size)
+        }
+
+        val changedIds = changedTracks.map { it.id }.toSet()
+        var added = 0
+        var updated = 0
+
+        if (changedTracks.isNotEmpty()) {
+            val existing = profileDao.getTrackTimestampsByProfile(profileId)
+                .associate { it.remoteId to it.remoteUpdatedAt }
+            changedTracks.forEach { track ->
+                if (existing.containsKey(track.id)) updated++ else added++
+            }
+            saveTracks(profileId, profile.serviceType.toMediaSourceType(), changedTracks)
+        }
+
+        val totalAfter = profileDao.getTrackCountForProfile(profileId)
+
+        // Removal detection:
+        // - Subsonic/OpenSubsonic: changedTracks is a full inventory when changed.
+        // - Navidrome/Jellyfin/Emby: use a full remote ID snapshot from worker.
+        val removed = when (profile.serviceType) {
+            com.musicplayer.profile.MediaServiceType.Subsonic,
+            com.musicplayer.profile.MediaServiceType.OpenSubsonic -> {
+                val localIds = profileDao.getRemoteIdsByProfile(profileId).toSet()
+                val toRemove = localIds - changedIds
+                if (toRemove.isNotEmpty()) {
+                    profileDao.deleteTracksByRemoteIds(profileId, toRemove.toList())
+                }
+                toRemove.size
+            }
+            com.musicplayer.profile.MediaServiceType.Navidrome,
+            com.musicplayer.profile.MediaServiceType.Jellyfin,
+            com.musicplayer.profile.MediaServiceType.Emby -> {
+                val snapshot = remoteIdsSnapshot ?: emptySet()
+                if (snapshot.isEmpty()) {
+                    0
+                } else {
+                    val localIds = profileDao.getRemoteIdsByProfile(profileId).toSet()
+                    val toRemove = localIds - snapshot
+                    if (toRemove.isNotEmpty()) {
+                        profileDao.deleteTracksByRemoteIds(profileId, toRemove.toList())
+                    }
+                    toRemove.size
+                }
+            }
+            else -> 0
+        }
+
+        profileDao.updateLastDeltaSyncTime(profileId, now)
+        Timber.d("Delta sync for profile ${profile.name}: +$added ~$updated -$removed")
+        return DeltaSyncResult(added = added, updated = updated, removed = removed, totalAfter = totalAfter)
+    }
+
+    /**
+     * Convert [MediaServiceType] to [MediaSourceType] for the [saveTracks] call.
+     */
+    private fun com.musicplayer.profile.MediaServiceType.toMediaSourceType(): MediaSourceType {
+        return when (this) {
+            com.musicplayer.profile.MediaServiceType.Jellyfin -> MediaSourceType.JELLYFIN
+            com.musicplayer.profile.MediaServiceType.Emby -> MediaSourceType.EMBY
+            com.musicplayer.profile.MediaServiceType.Plex -> MediaSourceType.PLEX
+            com.musicplayer.profile.MediaServiceType.Subsonic -> MediaSourceType.SUBSONIC
+            com.musicplayer.profile.MediaServiceType.OpenSubsonic -> MediaSourceType.OPEN_SUBSONIC
+            com.musicplayer.profile.MediaServiceType.Navidrome -> MediaSourceType.NAVIDROME
+        }
     }
 
     /**
@@ -250,7 +358,8 @@ class ProfileMusicRepository @Inject constructor(
             uri = streamUri,
             sourceId = profileId,
             sourceName = "Profile",
-            sourceType = parsedSourceType
+            sourceType = parsedSourceType,
+            remoteUpdatedAt = remoteUpdatedAt
         )
     }
 }

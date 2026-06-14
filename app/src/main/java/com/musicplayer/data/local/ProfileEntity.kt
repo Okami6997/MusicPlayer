@@ -20,5 +20,9 @@ data class ProfileEntity(
     val username: String = "",
     val password: String = "",
     val token: String = "",
-    val downloadPort: Int = 3000
+    val downloadPort: Int = 3000,
+    // Epoch millis of the last successful delta sync for this profile. 0 means never.
+    val lastDeltaSyncAt: Long = 0L,
+    // Epoch millis of the last successful full sync for this profile. 0 means never.
+    val lastFullSyncAt: Long = 0L
 )

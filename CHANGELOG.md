@@ -7,7 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-## [beta-4] - 2026-05-11
+## [beta-5] - 2026-06-14
+
+### Added
+- **Delta sync** for all remote sources (Jellyfin, Emby, Plex, Subsonic, OpenSubsonic, Navidrome). Only the tracks that changed since the last sync are downloaded, instead of rebuilding the whole library every time. The library/server "Sync" action is now delta by default.
+- Per-source and per-profile **last sync timestamps** (`lastDeltaSyncAt` / `lastFullSyncAt`) persisted in Room and shown on source/profile list items.
+- New **Sync** settings screen (reachable from Settings → Sync) with "Sync All Sources (Delta)" and "Full Sync All Sources" actions, plus per-source delta/full sync buttons.
+- New `DeltaSyncWorker` and `DeltaProfileSyncWorker` (WorkManager-based) for background delta syncing, matching the existing full-sync workers.
+- `Track.remoteUpdatedAt`, `TrackEntity.remoteUpdatedAt`, and `ProfileTrackEntity.remoteUpdatedAt` columns store the server-side "last modified" timestamp for each track. Used by the delta algorithm to skip unchanged tracks.
+- Subsonic / OpenSubsonic use the server's cheap `getIndexes.lastModified` check to short-circuit delta syncs when the library hasn't changed.
+- Jellyfin / Emby delta sync uses `getItems` with `SortBy=DateModified,SortOrder=Descending` and stops paginating once it reaches the cutoff.
+- Plex delta sync fetches the most recent pages of the music library section and filters by `updatedAt` per item.
+- Navidrome (native API) delta sync uses `getSongs` with `updatedAt` filtering.
+- Global `LAST_DELTA_SYNC_TIME` and `LAST_FULL_SYNC_TIME` DataStore keys for the "Sync" screen.
+
+### Changed
+- Default sync behaviour on `SourcesScreen` and `ProfileListScreen` is now **delta sync** (fast, fetches only changes). A new dropdown menu on the per-source/per-profile sync icon exposes a separate **Full Sync** action for when a complete rebuild is required.
+- `MusicRepository.syncSource()` and `MusicRepository.fetchTracksFromSource()` remain as the **full sync** entry points (used internally by delta sync as a fallback and exposed by the explicit Full Sync action).
+- `MediaSource` and `Profile` domain models now expose `lastDeltaSyncAt` and `lastFullSyncAt` fields.
+- Bumped database version 7 → 8 with a `MIGRATION_7_8` that adds the new columns. The migration preserves existing tracks and sources.
+
+### Fixed
+- Jellyfin delta sync no longer fetches every item on every run — it stops paginating as soon as it hits the cutoff timestamp.
 
 ### Added
 - Added background sync for both old UI (Sources screen) and new UI (Profile list and Library screens) using WorkManager. Syncing now runs as a background process that continues even when navigating away.

@@ -12,6 +12,7 @@ import com.musicplayer.data.remote.subsonic.SubsonicApi
 import com.musicplayer.data.remote.subsonic.SubsonicClient
 import com.musicplayer.domain.model.MediaSource
 import com.musicplayer.domain.model.MediaSourceType
+import com.musicplayer.worker.DeltaSyncWorker
 import com.musicplayer.worker.SyncWorker
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
@@ -87,18 +88,28 @@ class SourcesViewModel @Inject constructor(
     }
 
     fun scanSource(source: MediaSource) {
+        // Default behaviour is now a delta sync (fast, fetches only changes).
+        deltaSyncSource(source)
+    }
+
+    /**
+     * Enqueues a [DeltaSyncWorker] for the given [source] so only the changes
+     * since the last sync are downloaded. Falls back to a full sync internally
+     * if the source has never been fully synced.
+     */
+    fun deltaSyncSource(source: MediaSource) {
         val inputData = workDataOf(
-            SyncWorker.KEY_SOURCE_ID to source.id,
-            SyncWorker.KEY_SOURCE_NAME to source.name
+            DeltaSyncWorker.KEY_SOURCE_ID to source.id,
+            DeltaSyncWorker.KEY_SOURCE_NAME to source.name
         )
 
-        val syncWork = OneTimeWorkRequestBuilder<SyncWorker>()
+        val syncWork = OneTimeWorkRequestBuilder<DeltaSyncWorker>()
             .setInputData(inputData)
-            .addTag("sync_${source.id}")
+            .addTag("delta_sync_${source.id}")
             .build()
 
         workManager.enqueueUniqueWork(
-            "sync_${source.id}",
+            "delta_sync_${source.id}",
             ExistingWorkPolicy.REPLACE,
             syncWork
         )
@@ -111,15 +122,72 @@ class SourcesViewModel @Inject constructor(
             workManager.getWorkInfoByIdFlow(syncWork.id).collect { workInfo ->
                 when (workInfo?.state) {
                     WorkInfo.State.SUCCEEDED -> {
+                        val added = workInfo.outputData.getInt(DeltaSyncWorker.KEY_ADDED, 0)
+                        val updated = workInfo.outputData.getInt(DeltaSyncWorker.KEY_UPDATED, 0)
+                        val removed = workInfo.outputData.getInt(DeltaSyncWorker.KEY_REMOVED, 0)
+                        val total = workInfo.outputData.getInt(DeltaSyncWorker.KEY_TOTAL_AFTER, 0)
+                        _scanState.update {
+                            it.copy(
+                                isScanning = false,
+                                progress = if (added == 0 && updated == 0 && removed == 0) {
+                                    "Up to date ($total tracks)"
+                                } else {
+                                    "Synced +$added ~$updated -$removed ($total total)"
+                                }
+                            )
+                        }
+                    }
+                    WorkInfo.State.FAILED -> {
+                        val errorMessage = workInfo.outputData.getString(DeltaSyncWorker.KEY_ERROR_MESSAGE) ?: "Unknown error"
+                        _scanState.update { it.copy(isScanning = false, progress = "Error: $errorMessage") }
+                    }
+                    WorkInfo.State.RUNNING -> {
+                        _scanState.update { it.copy(isScanning = true, progress = "Syncing ${source.name}...") }
+                    }
+                    else -> {}
+                }
+            }
+        }
+    }
+
+    /**
+     * Enqueues a [SyncWorker] for the given [source], performing a full
+     * re-sync that rebuilds the local cache from scratch.
+     */
+    fun fullSyncSource(source: MediaSource) {
+        val inputData = workDataOf(
+            SyncWorker.KEY_SOURCE_ID to source.id,
+            SyncWorker.KEY_SOURCE_NAME to source.name
+        )
+
+        val syncWork = OneTimeWorkRequestBuilder<SyncWorker>()
+            .setInputData(inputData)
+            .addTag("full_sync_${source.id}")
+            .build()
+
+        workManager.enqueueUniqueWork(
+            "full_sync_${source.id}",
+            ExistingWorkPolicy.REPLACE,
+            syncWork
+        )
+
+        _activeWorkIds.update { it + (source.id to syncWork.id) }
+
+        _scanState.update { it.copy(isScanning = true, progress = "Full sync of ${source.name}...") }
+
+        viewModelScope.launch {
+            workManager.getWorkInfoByIdFlow(syncWork.id).collect { workInfo ->
+                when (workInfo?.state) {
+                    WorkInfo.State.SUCCEEDED -> {
                         val trackCount = workInfo.outputData.getInt(SyncWorker.KEY_TRACK_COUNT, 0)
-                        _scanState.update { it.copy(isScanning = false, progress = "Found $trackCount tracks") }
+                        _scanState.update { it.copy(isScanning = false, progress = "Full sync done: $trackCount tracks") }
                     }
                     WorkInfo.State.FAILED -> {
                         val errorMessage = workInfo.outputData.getString(SyncWorker.KEY_ERROR_MESSAGE) ?: "Unknown error"
                         _scanState.update { it.copy(isScanning = false, progress = "Error: $errorMessage") }
                     }
                     WorkInfo.State.RUNNING -> {
-                        _scanState.update { it.copy(isScanning = true, progress = "Syncing ${source.name}...") }
+                        _scanState.update { it.copy(isScanning = true, progress = "Full sync of ${source.name}...") }
                     }
                     else -> {}
                 }

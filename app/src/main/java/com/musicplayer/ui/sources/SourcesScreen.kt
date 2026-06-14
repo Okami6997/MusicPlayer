@@ -148,7 +148,8 @@ fun SourcesScreen(
                         showEditDialog = true
                     },
                     onDelete = { viewModel.deleteSource(source.id) },
-                    onScan = { checkAndScanSource(source) }
+                    onDeltaSync = { checkAndScanSource(source) },
+                    onFullSync = { viewModel.fullSyncSource(source) }
                 )
                 HorizontalDivider()
             }
@@ -205,11 +206,27 @@ private fun SourceListItem(
     source: MediaSource,
     onEdit: () -> Unit,
     onDelete: () -> Unit,
-    onScan: () -> Unit
+    onDeltaSync: () -> Unit,
+    onFullSync: () -> Unit
 ) {
+    var showSyncMenu by remember { mutableStateOf(false) }
+    val lastSyncText = remember(source.lastDeltaSyncAt, source.lastFullSyncAt) {
+        formatLastSync(source.lastDeltaSyncAt, source.lastFullSyncAt)
+    }
     ListItem(
         headlineContent = { Text(source.name) },
-        supportingContent = { Text("${source.type.name} • ${source.baseUrl.ifEmpty { "Local" }}") },
+        supportingContent = {
+            Column {
+                Text("${source.type.name} • ${source.baseUrl.ifEmpty { "Local" }}")
+                if (lastSyncText.isNotEmpty()) {
+                    Text(
+                        lastSyncText,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+        },
         leadingContent = {
             Icon(
                 imageVector = when (source.type) {
@@ -227,8 +244,31 @@ private fun SourceListItem(
         },
         trailingContent = {
             Row {
-                IconButton(onClick = onScan) {
-                    Icon(Icons.Default.Refresh, contentDescription = "Scan source")
+                Box {
+                    IconButton(onClick = { showSyncMenu = true }) {
+                        Icon(Icons.Default.Refresh, contentDescription = "Sync source")
+                    }
+                    DropdownMenu(
+                        expanded = showSyncMenu,
+                        onDismissRequest = { showSyncMenu = false }
+                    ) {
+                        DropdownMenuItem(
+                            text = { Text("Delta Sync") },
+                            leadingIcon = { Icon(Icons.Default.Sync, contentDescription = null) },
+                            onClick = {
+                                showSyncMenu = false
+                                onDeltaSync()
+                            }
+                        )
+                        DropdownMenuItem(
+                            text = { Text("Full Sync") },
+                            leadingIcon = { Icon(Icons.Default.CloudSync, contentDescription = null) },
+                            onClick = {
+                                showSyncMenu = false
+                                onFullSync()
+                            }
+                        )
+                    }
                 }
                 IconButton(onClick = onEdit) {
                     Icon(Icons.Default.Edit, contentDescription = "Edit source")
@@ -239,6 +279,28 @@ private fun SourceListItem(
             }
         }
     )
+}
+
+/**
+ * Renders the last sync timestamps for a source as a short human-readable string.
+ * Returns an empty string if the source has never been synced.
+ */
+private fun formatLastSync(lastDeltaSyncAt: Long, lastFullSyncAt: Long): String {
+    if (lastDeltaSyncAt <= 0L && lastFullSyncAt <= 0L) return ""
+    val deltaText = if (lastDeltaSyncAt > 0L) "Delta: ${formatRelative(lastDeltaSyncAt)}" else null
+    val fullText = if (lastFullSyncAt > 0L) "Full: ${formatRelative(lastFullSyncAt)}" else null
+    return listOfNotNull(deltaText, fullText).joinToString(" • ")
+}
+
+private fun formatRelative(epochMillis: Long): String {
+    val diffMs = System.currentTimeMillis() - epochMillis
+    val mins = diffMs / 60_000
+    return when {
+        mins < 1 -> "just now"
+        mins < 60 -> "${mins}m ago"
+        mins < 60 * 24 -> "${mins / 60}h ago"
+        else -> "${mins / (60 * 24)}d ago"
+    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)

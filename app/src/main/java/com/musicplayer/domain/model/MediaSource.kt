@@ -31,5 +31,7 @@ data class MediaSource(
     val isEnabled: Boolean = true,
     val isOnline: Boolean = false,
     val lastSyncTime: Long = 0L,
+    val lastDeltaSyncAt: Long = 0L,
+    val lastFullSyncAt: Long = 0L,
     val artworkUri: String? = null
 )

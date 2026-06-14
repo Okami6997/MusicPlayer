@@ -2,6 +2,7 @@ package com.musicplayer.ui.settings
 
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.intPreferencesKey
+import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 
 object SettingsKeys {
@@ -18,4 +19,8 @@ object SettingsKeys {
 
     // New UI Feature Flag
     val USE_NEW_UI = booleanPreferencesKey("use_new_ui")
+
+    // Global last-sync timestamps (epoch millis) for the "Sync" settings screen.
+    val LAST_DELTA_SYNC_TIME = longPreferencesKey("last_delta_sync_time")
+    val LAST_FULL_SYNC_TIME = longPreferencesKey("last_full_sync_time")
 }

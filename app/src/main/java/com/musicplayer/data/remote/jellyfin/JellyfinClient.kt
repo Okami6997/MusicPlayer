@@ -106,7 +106,112 @@ class JellyfinClient @Inject constructor() {
             sourceType = source.type,
             bitrate = mediaSource?.bitrate ?: 0,
             fileSize = mediaSource?.size ?: 0L,
-            codec = mediaSource?.container ?: ""
+            codec = mediaSource?.container ?: "",
+            remoteUpdatedAt = parseJellyfinDate(dateModified)
         )
+    }
+
+    /**
+     * Parses a Jellyfin/ISO-8601 date string into epoch millis.
+     * Returns 0 if the string is null or unparseable.
+     */
+    private fun parseJellyfinDate(date: String?): Long {
+        if (date.isNullOrBlank()) return 0L
+        return try {
+            java.time.Instant.parse(date).toEpochMilli()
+        } catch (e: Exception) {
+            try {
+                java.time.OffsetDateTime.parse(date).toInstant().toEpochMilli()
+            } catch (e: Exception) {
+                try {
+                    java.time.LocalDateTime.parse(date)
+                        .atZone(java.time.ZoneOffset.UTC)
+                        .toInstant()
+                        .toEpochMilli()
+                } catch (_: Exception) {
+                    0L
+                }
+            }
+        }
+    }
+
+    /**
+     * Fetches only the items that were created or modified since [sinceEpochMillis].
+     * Uses Jellyfin's `SortBy=DateModified,SortOrder=Descending` and walks pagination.
+     *
+     * Returns the fetched items as [Track]s. Each track carries its server-side
+     * [Track.remoteUpdatedAt] so the repository can diff against the local cache.
+     */
+    suspend fun fetchChangedTracks(
+        api: JellyfinApi,
+        source: MediaSource,
+        sinceEpochMillis: Long
+    ): List<Track> {
+        val tracks = mutableListOf<Track>()
+        var startIndex = 0
+        val pageSize = 250
+        val minDateLastSaved = if (sinceEpochMillis > 0L) {
+            java.time.Instant.ofEpochMilli(sinceEpochMillis)
+                .toString()
+        } else {
+            null
+        }
+
+        // Use server-side min-date filtering for correctness. Some servers/plugins may
+        // not guarantee strict DateModified ordering, so avoid client-side cutoff breaks.
+        while (true) {
+            Timber.d("Delta Jellyfin: fetching startIndex=$startIndex limit=$pageSize")
+            val response = api.getItems(
+                token = source.token,
+                startIndex = startIndex,
+                limit = pageSize,
+                sortBy = "DateModified",
+                sortOrder = "Descending",
+                minDateLastSaved = minDateLastSaved
+            )
+            val items = response.items
+            if (items.isEmpty()) break
+
+            for (item in items) {
+                tracks.add(item.toTrack(source))
+            }
+            if (items.size < pageSize) break
+            startIndex += pageSize
+        }
+
+        Timber.d("Delta Jellyfin: fetched ${tracks.size} changed tracks")
+        return tracks
+    }
+
+    /**
+     * Fetches the full set of remote track IDs for reconciliation (deletion detection).
+     * Keeps payload lighter by avoiding extra fields.
+     */
+    suspend fun fetchAllTrackIds(api: JellyfinApi, source: MediaSource): Set<String> {
+        val ids = mutableSetOf<String>()
+        var startIndex = 0
+        val pageSize = 500
+
+        while (true) {
+            val response = api.getItems(
+                token = source.token,
+                fields = "",
+                startIndex = startIndex,
+                limit = pageSize,
+                sortBy = "SortName",
+                sortOrder = "Ascending"
+            )
+            val items = response.items
+            if (items.isEmpty()) break
+
+            items.forEach { item ->
+                ids.add("${source.id}_${item.id}")
+            }
+
+            if (items.size < pageSize) break
+            startIndex += pageSize
+        }
+
+        return ids
     }
 }

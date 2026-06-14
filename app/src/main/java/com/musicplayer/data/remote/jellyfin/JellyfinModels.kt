@@ -33,7 +33,10 @@ data class JellyfinItem(
     @SerializedName("ArtistItems") val artistItems: List<JellyfinArtistItem> = emptyList(),
     @SerializedName("ImageTags") val imageTags: Map<String, String> = emptyMap(),
     @SerializedName("MediaSources") val mediaSources: List<JellyfinMediaSource> = emptyList(),
-    @SerializedName("Overview") val overview: String = ""
+    @SerializedName("Overview") val overview: String = "",
+    // Epoch millis of the last time the item was modified on the server.
+    // Used by the delta sync algorithm to skip items that haven't changed since the last sync.
+    @SerializedName("DateModified") val dateModified: String? = null
 )
 
 data class JellyfinArtistItem(

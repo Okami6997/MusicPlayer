@@ -40,4 +40,28 @@ interface TrackDao {
 
     @Query("SELECT DISTINCT album FROM tracks WHERE lower(album) LIKE '%' || lower(:query) || '%' ORDER BY album")
     fun searchAlbums(query: String): Flow<List<String>>
+
+    // ── Delta sync helpers ─────────────────────────────────────────────────────
+
+    /** Returns all track IDs belonging to a source. Used for diffing during delta sync. */
+    @Query("SELECT id FROM tracks WHERE sourceId = :sourceId")
+    suspend fun getTrackIdsBySource(sourceId: String): List<String>
+
+    /** Returns all track IDs together with their remoteUpdatedAt timestamp. */
+    @Query("SELECT id, remoteUpdatedAt FROM tracks WHERE sourceId = :sourceId")
+    suspend fun getTrackTimestampsBySource(sourceId: String): List<TrackTimestampRow>
+
+    /** Upserts a single track (used by delta sync to insert new / update modified tracks). */
+    @Upsert
+    suspend fun upsertTrackEntity(track: TrackEntity)
+
+    /** Deletes a batch of track IDs that no longer exist on the remote server. */
+    @Query("DELETE FROM tracks WHERE sourceId = :sourceId AND id IN (:ids)")
+    suspend fun deleteTracksByIds(sourceId: String, ids: List<String>)
 }
+
+/** Simple row used by TrackDao.getTrackTimestampsBySource. */
+data class TrackTimestampRow(
+    val id: String,
+    val remoteUpdatedAt: Long
+)

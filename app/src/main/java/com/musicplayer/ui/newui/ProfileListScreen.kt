@@ -79,7 +79,8 @@ fun ProfileListScreen(
                             onEdit = { onNavigateToEdit(profile.id) },
                             onDelete = { viewModel.deleteProfile(profile) },
                             onToggleEnabled = { viewModel.toggleProfileEnabled(profile) },
-                            onSync = { viewModel.syncProfile(profile) }
+                            onDeltaSync = { viewModel.deltaSyncProfile(profile) },
+                            onFullSync = { viewModel.fullSyncProfile(profile) }
                         )
                     }
                 }
@@ -148,9 +149,14 @@ private fun ProfileCard(
     onEdit: () -> Unit,
     onDelete: () -> Unit,
     onToggleEnabled: () -> Unit,
-    onSync: () -> Unit
+    onDeltaSync: () -> Unit,
+    onFullSync: () -> Unit
 ) {
     var showDeleteDialog by remember { mutableStateOf(false) }
+    var showSyncMenu by remember { mutableStateOf(false) }
+    val lastSyncText = remember(profile.lastDeltaSyncAt, profile.lastFullSyncAt) {
+        formatLastSync(profile.lastDeltaSyncAt, profile.lastFullSyncAt)
+    }
 
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -182,6 +188,13 @@ private fun ProfileCard(
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
+                    if (lastSyncText.isNotEmpty()) {
+                        Text(
+                            lastSyncText,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                     if (!profile.isEnabled) {
                         Text(
                             "Disabled",
@@ -199,8 +212,31 @@ private fun ProfileCard(
                             strokeWidth = 2.dp
                         )
                     } else {
-                        IconButton(onClick = onSync) {
-                            Icon(Icons.Default.Refresh, contentDescription = "Sync")
+                        Box {
+                            IconButton(onClick = { showSyncMenu = true }) {
+                                Icon(Icons.Default.Refresh, contentDescription = "Sync")
+                            }
+                            DropdownMenu(
+                                expanded = showSyncMenu,
+                                onDismissRequest = { showSyncMenu = false }
+                            ) {
+                                DropdownMenuItem(
+                                    text = { Text("Delta Sync") },
+                                    leadingIcon = { Icon(Icons.Default.Sync, contentDescription = null) },
+                                    onClick = {
+                                        showSyncMenu = false
+                                        onDeltaSync()
+                                    }
+                                )
+                                DropdownMenuItem(
+                                    text = { Text("Full Sync") },
+                                    leadingIcon = { Icon(Icons.Default.CloudSync, contentDescription = null) },
+                                    onClick = {
+                                        showSyncMenu = false
+                                        onFullSync()
+                                    }
+                                )
+                            }
                         }
                     }
                     IconButton(onClick = onToggleEnabled) {
@@ -249,5 +285,27 @@ private fun ProfileCard(
                 }
             }
         )
+    }
+}
+
+/**
+ * Renders the last sync timestamps for a profile as a short human-readable
+ * string. Returns an empty string if the profile has never been synced.
+ */
+private fun formatLastSync(lastDeltaSyncAt: Long, lastFullSyncAt: Long): String {
+    if (lastDeltaSyncAt <= 0L && lastFullSyncAt <= 0L) return ""
+    val deltaText = if (lastDeltaSyncAt > 0L) "Delta: ${formatRelative(lastDeltaSyncAt)}" else null
+    val fullText = if (lastFullSyncAt > 0L) "Full: ${formatRelative(lastFullSyncAt)}" else null
+    return listOfNotNull(deltaText, fullText).joinToString(" • ")
+}
+
+private fun formatRelative(epochMillis: Long): String {
+    val diffMs = System.currentTimeMillis() - epochMillis
+    val mins = diffMs / 60_000
+    return when {
+        mins < 1 -> "just now"
+        mins < 60 -> "${mins}m ago"
+        mins < 60 * 24 -> "${mins / 60}h ago"
+        else -> "${mins / (60 * 24)}d ago"
     }
 }

@@ -36,6 +36,7 @@ sealed class Screen(val route: String) {
     data object Audio : Screen("audio")
     data object Downloads : Screen("downloads")
     data object AndroidAuto : Screen("android_auto")
+    data object Sync : Screen("sync")
     data object AlbumDetail : Screen("album_detail/{albumId}") {
         fun createRoute(albumId: String) = "album_detail/$albumId"
     }
@@ -134,6 +135,7 @@ fun MusicPlayerNavGraph(
                 onNavigateToDownloads = { navController.navigate(Screen.Downloads.route) },
                 onNavigateToDownloadSource = { navController.navigate(Screen.DownloadMusic.route) },
                 onNavigateToAndroidAuto = { navController.navigate(Screen.AndroidAuto.route) },
+                onNavigateToSync = { navController.navigate(Screen.Sync.route) },
                 onNavigateBack = { navController.popBackStack() }
             )
         }
@@ -161,6 +163,11 @@ fun MusicPlayerNavGraph(
             AndroidAutoScreen(
                 onNavigateBack = { navController.popBackStack() }
             )
+        composable(Screen.Sync.route) {
+            com.musicplayer.ui.settings.SyncScreen(
+                onNavigateBack = { navController.popBackStack() }
+            )
+        }
         }
     }
 }

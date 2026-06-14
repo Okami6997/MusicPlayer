@@ -21,6 +21,7 @@ fun NewUiSettingsScreen(
     onNavigateToAppearance: () -> Unit,
     onNavigateToAudio: () -> Unit,
     onNavigateToDownloads: () -> Unit,
+    onNavigateToSync: () -> Unit,
     onNavigateBack: () -> Unit,
     viewModel: SettingsViewModel = hiltViewModel()
 ) {
@@ -52,6 +53,19 @@ fun NewUiSettingsScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .clickable { onNavigateToSources() }
+                )
+                HorizontalDivider()
+            }
+
+            item {
+                ListItem(
+                    headlineContent = { Text("Sync") },
+                    supportingContent = { Text("Delta sync or full sync the current profile") },
+                    leadingContent = { Icon(Icons.Default.Sync, contentDescription = null) },
+                    trailingContent = { Icon(Icons.Default.ChevronRight, contentDescription = null) },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { onNavigateToSync() }
                 )
                 HorizontalDivider()
             }
