@@ -93,6 +93,25 @@ UI Layer          →  ViewModel  →  Repository  →  Data Sources
 
 ## Key Data Flow
 
+### Sync model (current)
+
+- **Delta sync is the default** from source/profile list actions.
+- **Full sync remains explicitly available** from per-item sync menus and the dedicated Sync settings screen.
+- Old UI/source sync workers:
+  - `SyncWorker` (full sync)
+  - `DeltaSyncWorker` (delta sync)
+- New UI/profile sync workers:
+  - `ProfileSyncWorker` (full sync)
+  - `DeltaProfileSyncWorker` (delta sync)
+- `MusicRepository` owns source sync orchestration and provider clients.
+- `ProfileMusicRepository` owns profile-scoped persistence and delta reconciliation for `profile_tracks`.
+- Delta sync writes and uses `lastDeltaSyncAt`; full sync updates `lastFullSyncAt`.
+
+### Known sync caveat
+
+- A tracked issue exists where full sync may complete almost instantly and appear similar to delta sync behavior for some remote provider/session combinations.
+- Status/workarounds are documented in `ISSUES.md` and summarized in `README.md`/`CHANGELOG.md`.
+
 ### Local music scan
 ```
 User taps "Scan Local Library"

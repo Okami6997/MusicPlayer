@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [beta-5] - 2026-06-14
 
+### Known limitations
+- Full sync may complete immediately and appear similar to delta sync behavior for some remote providers/sessions. Tracked in `ISSUES.md` while investigation continues.
+
 ### Added
 - **Delta sync** for all remote sources (Jellyfin, Emby, Plex, Subsonic, OpenSubsonic, Navidrome). Only the tracks that changed since the last sync are downloaded, instead of rebuilding the whole library every time. The library/server "Sync" action is now delta by default.
 - Per-source and per-profile **last sync timestamps** (`lastDeltaSyncAt` / `lastFullSyncAt`) persisted in Room and shown on source/profile list items.
